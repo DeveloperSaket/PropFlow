@@ -1,0 +1,32 @@
+import express from 'express';
+import cors from 'cors';
+import { config } from './config.js';
+import { initSchema } from './db.js';
+import { ensureAdmin } from './bootstrap.js';
+import { notFound, errorHandler } from './middleware/error.js';
+import authRoutes from './routes/auth.js';
+import propertyRoutes from './routes/properties.js';
+import interestRoutes from './routes/interests.js';
+import appointmentRoutes from './routes/appointments.js';
+import complianceRoutes from './routes/compliance.js';
+import adminRoutes from './routes/admin.js';
+initSchema();
+ensureAdmin();
+const app = express();
+app.set('trust proxy', true);
+app.use(cors({ origin: config.corsOrigin === '*' ? true : config.corsOrigin.split(',') }));
+app.use(express.json({ limit: '1mb' }));
+// Serve uploaded compliance docs (in production, protect / move to object storage)
+app.use('/uploads', express.static(config.uploadDir));
+app.get('/api/health', (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
+app.use('/api/auth', authRoutes);
+app.use('/api/properties', propertyRoutes);
+app.use('/api/interests', interestRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/compliance', complianceRoutes);
+app.use('/api/admin', adminRoutes);
+app.use(notFound);
+app.use(errorHandler);
+app.listen(config.port, () => {
+  console.log(`[propflow] API listening on http://localhost:${config.port}`);
+});
