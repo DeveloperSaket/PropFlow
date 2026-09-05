@@ -287,4 +287,4 @@ router.delete('/:id', authenticate, requireRole('seller', 'admin'), (req, res) =
   audit({ actorId: req.user.id, action: 'property.delete', entity: 'property', entityId: row.id, ip: req.ip });
   res.json({ ok: true });
 });
-export default rout
+export default router;
