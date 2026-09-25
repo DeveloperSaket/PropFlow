@@ -139,3 +139,8 @@ propflow/
 - Add email/SMS notifications for lead and appointment events.
 - Add automated tests and CI; containerize with Docker.
 - For higher write concurrency, consider Postgres (the SQL is standard).
+
+
+  admin : admin@propflow.test / Admin@12345
+  seller: ravi@seller.test / Password@123
+  buyer : anita@buyer.test / Password@123
