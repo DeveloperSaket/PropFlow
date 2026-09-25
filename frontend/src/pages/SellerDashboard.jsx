@@ -42,7 +42,7 @@ export default function SellerDashboard() {
           You must complete <Link to="/kyc">KYC verification</Link> before you can publish listings.
         </div>
       )}
-      <div className="grid cols-4" style={{ margin: '16px 0 24px' }}>
+      <div className="grid cols-4 my-16-24">
         <Stat num={listings.length} label="Listings" />
         <Stat num={approved} label="Approved" color="var(--green)" />
         <Stat num={pending} label="In review" color="var(--amber)" />
@@ -57,7 +57,7 @@ export default function SellerDashboard() {
       </div>
       {tab === 'listings' && (
         listings.length === 0 ? <p className="muted">No listings yet.</p> : (
-          <div className="table-wrap card" style={{ padding: 0 }}>
+          <div className="table-wrap card p-0">
             <table>
               <thead><tr><th>Title</th><th>Price</th><th>City</th><th>Status</th><th>Views</th><th>Interests</th><th>Actions</th></tr></thead>
               <tbody>
@@ -85,7 +85,7 @@ export default function SellerDashboard() {
       )}
       {tab === 'leads' && (
         leads.length === 0 ? <p className="muted">No buyer leads yet.</p> : (
-          <div className="table-wrap card" style={{ padding: 0 }}>
+          <div className="table-wrap card p-0">
             <table>
               <thead><tr><th>Property</th><th>Buyer</th><th>Contact</th><th>Message</th><th>Status</th><th>Update</th></tr></thead>
               <tbody>
@@ -113,7 +113,7 @@ export default function SellerDashboard() {
       )}
       {tab === 'viewings' && (
         appts.length === 0 ? <p className="muted">No viewing requests.</p> : (
-          <div className="table-wrap card" style={{ padding: 0 }}>
+          <div className="table-wrap card p-0">
             <table>
               <thead><tr><th>Property</th><th>Buyer</th><th>When</th><th>Status</th><th>Action</th></tr></thead>
               <tbody>
