@@ -5,11 +5,11 @@ import { Spinner } from '../components/ui.jsx';
 
 const PRICE_RANGES = [
   { value: '', label: 'Any' },
-  { value: '0-5000000', label: '₹0 – ₹50L', min: 0, max: 5000000 },
-  { value: '5000000-10000000', label: '₹50L – ₹1Cr', min: 5000000, max: 10000000 },
-  { value: '10000000-20000000', label: '₹1Cr – ₹2Cr', min: 10000000, max: 20000000 },
-  { value: '20000000-50000000', label: '₹2Cr – ₹5Cr', min: 20000000, max: 50000000 },
-  { value: '50000000-99999999', label: '₹5Cr+', min: 50000000, max: 99999999 },
+  { value: '0-500000', label: '$0 – $500K', min: 0, max: 500000 },
+  { value: '500000-1000000', label: '$500K – $1M', min: 500000, max: 1000000 },
+  { value: '1000000-2000000', label: '$1M – $2M', min: 1000000, max: 2000000 },
+  { value: '2000000-5000000', label: '$2M – $5M', min: 2000000, max: 5000000 },
+  { value: '5000000-99999999', label: '$5M+', min: 5000000, max: 99999999 },
 ];
 
 const empty = {
