@@ -16,7 +16,7 @@ export function Stat({ num, label, color }) {
 export function formatMoney(n) {
   if (n == null) return '—';
   // Indian-style grouping
-  return '₹' + Number(n).toLocaleString('en-IN');
+  return '$' + Number(n).toLocaleString('en-IN');
 }
 export function Spinner({ label = 'Loading…' }) {
   return <p className="muted center" style={{ padding: 40 }}>{label}</p>;

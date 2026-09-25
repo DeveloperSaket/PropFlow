@@ -87,7 +87,7 @@ export default function PropertyForm() {
             </select>
           </div>
           <div className="field">
-            <label>Price (₹) *</label>
+            <label>Price ($) *</label>
             <input type="number" value={form.price} onChange={set('price')} required min="1" />
           </div>
         </div>
