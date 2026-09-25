@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { Badge, Stat, Spinner, formatMoney } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import Chat from '../components/Chat/index.jsx';
+import { db } from '../firebase/index.js';
 export default function SellerDashboard() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -10,6 +12,7 @@ export default function SellerDashboard() {
   const [listings, setListings] = useState(null);
   const [leads, setLeads] = useState(null);
   const [appts, setAppts] = useState(null);
+  const [openChatLead, setOpenChatLead] = useState(null);
   const load = () => {
     api.get('/properties?mine=1&limit=50').then((r) => setListings(r.data));
     api.get('/interests/received').then((r) => setLeads(r.data));
@@ -103,6 +106,21 @@ export default function SellerDashboard() {
                         <option value="negotiating">negotiating</option>
                         <option value="closed">closed</option>
                       </select>
+                      <button className="btn small mt-10" onClick={() => setOpenChatLead(openChatLead === l.id ? null : l.id)}>
+                        {openChatLead === l.id ? 'Close chat' : 'Chat'}
+                      </button>
+                      {openChatLead === l.id && (
+                        <div className="seller-chat-inline">
+                          <Chat
+                            db={db}
+                            currentUserId={user.id}
+                            buyerId={l.buyer_id}
+                            sellerId={user.id}
+                            productId={l.property_id}
+                            otherUserLabel={l.buyer_name}
+                          />
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

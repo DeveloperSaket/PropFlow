@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { Badge, Alert, Spinner, formatMoney } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import Chat from '../components/Chat/index.jsx';
+import { db } from '../firebase/index.js';
 export default function PropertyDetail() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -114,6 +116,17 @@ export default function PropertyDetail() {
           {p.status === 'rejected' && p.rejection_reason && (
             <Alert type="error">Rejected: {p.rejection_reason}</Alert>
           )}
+        </div>
+      )}
+      {p.status === 'approved' && user?.role === 'buyer' && user.id !== p.seller_id && (
+        <div className="mt-20">
+          <Chat
+            db={db}
+            currentUserId={user.id}
+            buyerId={user.id}
+            sellerId={p.seller_id}
+            productId={p.id}
+          />
         </div>
       )}
     </div>
