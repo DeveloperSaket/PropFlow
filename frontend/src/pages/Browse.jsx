@@ -2,25 +2,52 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import PropertyCard from '../components/PropertyCard.jsx';
 import { Spinner } from '../components/ui.jsx';
+
+const PRICE_RANGES = [
+  { value: '', label: 'Any' },
+  { value: '0-5000000', label: '₹0 – ₹50L', min: 0, max: 5000000 },
+  { value: '5000000-10000000', label: '₹50L – ₹1Cr', min: 5000000, max: 10000000 },
+  { value: '10000000-20000000', label: '₹1Cr – ₹2Cr', min: 10000000, max: 20000000 },
+  { value: '20000000-50000000', label: '₹2Cr – ₹5Cr', min: 20000000, max: 50000000 },
+  { value: '50000000-99999999', label: '₹5Cr+', min: 50000000, max: 99999999 },
+];
+
 const empty = {
-  q: '', type: '', listing: '', city: '', minPrice: '', maxPrice: '',
-  bedrooms: '', sort: 'newest',
+  q: '', type: '', listing: '', city: '', priceRange: '', bedrooms: '', sort: 'newest',
 };
+
 export default function Browse() {
   const [filters, setFilters] = useState(empty);
   const [result, setResult] = useState(null);
   const [page, setPage] = useState(1);
+
   const load = (pg = 1) => {
     setResult(null);
     const params = new URLSearchParams({ page: pg, limit: 9 });
-    Object.entries(filters).forEach(([k, v]) => v !== '' && params.set(k, v));
+    const selectedRange = PRICE_RANGES.find((range) => range.value === filters.priceRange);
+
+    if (selectedRange && selectedRange.min !== undefined && selectedRange.min !== '') {
+      params.set('minPrice', String(selectedRange.min));
+    }
+    if (selectedRange && selectedRange.max !== undefined && selectedRange.max !== '') {
+      params.set('maxPrice', String(selectedRange.max));
+    }
+
+    Object.entries(filters).forEach(([k, v]) => {
+      if (k === 'priceRange' || v === '') return;
+      params.set(k, v);
+    });
+
     api.get(`/properties?${params.toString()}`).then(setResult).catch(() => setResult({ data: [], pagination: {} }));
   };
+
   useEffect(() => { load(1); setPage(1); /* eslint-disable-next-line */ }, []);
+
   const apply = (e) => { e.preventDefault(); setPage(1); load(1); };
   const set = (k) => (e) => setFilters((f) => ({ ...f, [k]: e.target.value }));
   const reset = () => { setFilters(empty); setTimeout(() => load(1), 0); };
   const go = (pg) => { setPage(pg); load(pg); window.scrollTo(0, 0); };
+
   return (
     <div className="container">
       <h1 className="page-title">Browse properties</h1>
@@ -56,13 +83,20 @@ export default function Browse() {
           </div>
         </div>
         <div className="row wrap" style={{ marginTop: 12, flexWrap: 'wrap' }}>
-          <div>
-            <label>Min price</label>
-            <input type="number" value={filters.minPrice} onChange={set('minPrice')} />
-          </div>
-          <div>
-            <label>Max price</label>
-            <input type="number" value={filters.maxPrice} onChange={set('maxPrice')} />
+          <div style={{ flex: 2, minWidth: 220 }}>
+            <label>Price range</label>
+            <div className="price-range-bar" aria-label="Price range selector">
+              {PRICE_RANGES.map((range) => (
+                <button
+                  key={range.value || 'any'}
+                  type="button"
+                  className={`price-range-option ${filters.priceRange === range.value ? 'active' : ''}`}
+                  onClick={() => setFilters((f) => ({ ...f, priceRange: range.value }))}
+                >
+                  {range.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <label>Min beds</label>
