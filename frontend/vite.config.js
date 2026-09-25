@@ -9,5 +9,15 @@ export default defineConfig({
       '/api': 'http://localhost:4000',
       '/uploads': 'http://localhost:4000',
     },
+    css: {
+      preprocessorOptions: {
+        scss: {
+          // Modern Sass compiler configuration
+          api: 'modern-compiler',
+          // Automatically injects global SCSS variables into every SCSS file
+          additionalData: `@use "@/styles/_variables.scss" as *;`
+        }
+      }
+    }
   },
 });
