@@ -46,20 +46,20 @@ export default function AdminDashboard() {
       {tab === 'overview' && (
         <>
           <h3>Users</h3>
-          <div className="grid cols-4" style={{ marginBottom: 18 }}>
+          <div className="grid cols-4 mb-18">
             <Stat num={stats.users.total} label="Total users" />
             <Stat num={stats.users.buyers} label="Buyers" color="var(--brand)" />
             <Stat num={stats.users.sellers} label="Sellers" color="var(--green)" />
             <Stat num={stats.users.pending_kyc} label="Pending KYC" color="var(--amber)" />
           </div>
           <h3>Properties</h3>
-          <div className="grid cols-4" style={{ marginBottom: 18 }}>
+          <div className="grid cols-4 mb-18">
             <Stat num={stats.properties.total} label="Total listings" />
             <Stat num={stats.properties.pending} label="Awaiting review" color="var(--amber)" />
             <Stat num={stats.properties.approved} label="Live" color="var(--green)" />
             <Stat num={stats.properties.sold} label="Sold" />
           </div>
-          <div className="grid cols-4" style={{ marginBottom: 18 }}>
+          <div className="grid cols-4 mb-18">
             <Stat num={formatMoney(stats.properties.listed_value)} label="Total listed value" color="var(--brand)" />
             <Stat num={stats.engagement.interests} label="Buyer interests" />
             <Stat num={stats.engagement.appointments} label="Appointments" />
@@ -76,14 +76,14 @@ export default function AdminDashboard() {
                   <Link to={`/properties/${p.id}`}><strong>{p.title}</strong></Link>
                   <Badge value={p.property_type} />
                 </div>
-                <p className="muted" style={{ margin: '6px 0' }}>
+                <p className="muted my-6">
                   {formatMoney(p.price)} · {p.city}, {p.state} · {p.listing_type}
                 </p>
-                <p style={{ fontSize: 13 }}>{p.description}</p>
-                <div className="muted" style={{ fontSize: 13 }}>
+                <p className="font-size-13">{p.description}</p>
+                <div className="muted font-size-13">
                   Seller: {p.seller_name} ({p.seller_email}) — KYC <Badge value={p.seller_kyc} />
                 </div>
-                <div className="field" style={{ marginTop: 10 }}>
+                <div className="field mt-10">
                   <input placeholder="Rejection reason (if rejecting)"
                     value={reason[p.id] || ''}
                     onChange={(e) => setReason((r) => ({ ...r, [p.id]: e.target.value }))} />
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
         )
       )}
       {tab === 'users' && (
-        <div className="table-wrap card" style={{ padding: 0 }}>
+        <div className="table-wrap card p-0">
           <table>
             <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>KYC</th><th>Active</th><th>Actions</th></tr></thead>
             <tbody>
@@ -126,7 +126,7 @@ export default function AdminDashboard() {
       )}
       {tab === 'appointments' && (
         appts.length === 0 ? <p className="muted">No appointments.</p> : (
-          <div className="table-wrap card" style={{ padding: 0 }}>
+          <div className="table-wrap card p-0">
             <table>
               <thead><tr><th>Property</th><th>Buyer</th><th>Seller</th><th>When</th><th>Status</th></tr></thead>
               <tbody>
@@ -143,7 +143,7 @@ export default function AdminDashboard() {
         )
       )}
       {tab === 'audit' && (
-        <div className="table-wrap card" style={{ padding: 0 }}>
+        <div className="table-wrap card p-0">
           <table>
             <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead>
             <tbody>

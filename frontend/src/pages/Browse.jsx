@@ -52,9 +52,9 @@ export default function Browse() {
     <div className="container">
       <h1 className="page-title">Browse properties</h1>
       <p className="subtle">Filter by type, location, price and more.</p>
-      <form className="card" onSubmit={apply} style={{ marginBottom: 20 }}>
-        <div className="row wrap" style={{ flexWrap: 'wrap' }}>
-          <div style={{ flex: 2, minWidth: 200 }}>
+      <form className="card mb-20" onSubmit={apply}>
+        <div className="row wrap flex-wrap">
+          <div className="flex-grow-2-min-200">
             <label>Search</label>
             <input value={filters.q} onChange={set('q')} placeholder="Title, address…" />
           </div>
@@ -82,8 +82,8 @@ export default function Browse() {
             <input value={filters.city} onChange={set('city')} placeholder="e.g. Pune" />
           </div>
         </div>
-        <div className="row wrap" style={{ marginTop: 12, flexWrap: 'wrap' }}>
-          <div style={{ flex: 2, minWidth: 220 }}>
+        <div className="row wrap mt-12 flex-wrap">
+          <div className="flex-grow-2-min-220">
             <label>Price range</label>
             <div className="price-range-bar" aria-label="Price range selector">
               {PRICE_RANGES.map((range) => (
@@ -110,7 +110,7 @@ export default function Browse() {
               <option value="price_desc">Price: high to low</option>
             </select>
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+          <div className="flex-end-gap-8">
             <button className="btn" type="submit">Apply</button>
             <button className="btn secondary" type="button" onClick={reset}>Reset</button>
           </div>
@@ -127,7 +127,7 @@ export default function Browse() {
             {result.data.map((p) => <PropertyCard key={p.id} p={p} />)}
           </div>
           {result.pagination.pages > 1 && (
-            <div className="flex" style={{ justifyContent: 'center', marginTop: 20, gap: 6 }}>
+            <div className="flex justify-center-gap-6">
               {Array.from({ length: result.pagination.pages }, (_, i) => i + 1).map((pg) => (
                 <button
                   key={pg}

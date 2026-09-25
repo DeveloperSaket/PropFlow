@@ -34,7 +34,7 @@ function Navbar() {
       {user ? (
         <>
           <span className="pill">{user.name} · {user.role}</span>
-          <a onClick={doLogout} style={{ cursor: 'pointer' }}>Logout</a>
+          <a onClick={doLogout} className="cursor-pointer">Logout</a>
         </>
       ) : (
         <>

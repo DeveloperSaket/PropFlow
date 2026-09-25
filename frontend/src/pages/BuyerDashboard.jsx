@@ -27,7 +27,7 @@ export default function BuyerDashboard() {
     <div className="container">
       <h1 className="page-title">Welcome, {user.name}</h1>
       <p className="subtle">Track your property interests and viewings.</p>
-      <div className="grid cols-4" style={{ marginBottom: 24 }}>
+      <div className="grid cols-4 mb-24">
         <Stat num={interests.length} label="Total interests" />
         <Stat num={active} label="Active" color="var(--brand)" />
         <Stat num={upcoming} label="Upcoming viewings" color="var(--green)" />
@@ -42,7 +42,7 @@ export default function BuyerDashboard() {
       {interests.length === 0 ? (
         <p className="muted">You haven't expressed interest in any property yet. <Link to="/browse">Browse listings →</Link></p>
       ) : (
-        <div className="table-wrap card" style={{ padding: 0, marginBottom: 30 }}>
+        <div className="table-wrap card p-0 mb-30">
           <table>
             <thead><tr><th>Property</th><th>Price</th><th>Seller</th><th>Status</th><th>Since</th><th></th></tr></thead>
             <tbody>
@@ -68,7 +68,7 @@ export default function BuyerDashboard() {
       {appts.length === 0 ? (
         <p className="muted">No viewings scheduled.</p>
       ) : (
-        <div className="table-wrap card" style={{ padding: 0 }}>
+        <div className="table-wrap card p-0">
           <table>
             <thead><tr><th>Property</th><th>When</th><th>Seller</th><th>Status</th><th></th></tr></thead>
             <tbody>

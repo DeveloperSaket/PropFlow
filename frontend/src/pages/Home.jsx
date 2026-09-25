@@ -23,8 +23,8 @@ export default function Home() {
           {!user && <Link to="/register" className="btn secondary">List your property</Link>}
         </div>
       </div>
-      <div className="flex between" style={{ marginBottom: 14 }}>
-        <h2 style={{ margin: 0 }}>Latest listings</h2>
+      <div className="flex between mb-14">
+        <h2 className="m-0">Latest listings</h2>
         <Link to="/browse">View all →</Link>
       </div>
       {props === null ? (
@@ -36,7 +36,7 @@ export default function Home() {
           {props.map((p) => <PropertyCard key={p.id} p={p} />)}
         </div>
       )}
-      <div className="grid cols-3" style={{ marginTop: 40 }}>
+      <div className="grid cols-3 mt-40">
         <div className="card">
           <h3>✅ Verified listings</h3>
           <p className="muted">Every property is reviewed by our compliance team before going live.</p>
