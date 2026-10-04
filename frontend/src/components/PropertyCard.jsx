@@ -3,7 +3,7 @@ import { Badge, formatMoney } from './ui.jsx';
 export default function PropertyCard({ p, showStatus }) {
   const img = p.images?.[0] || `https://picsum.photos/seed/p${p.id}/800/500`;
   return (
-    <Link to={`/properties/${p.id}`} className="card prop-card" style={{ color: 'inherit' }}>
+    <Link to={`/properties/${p.id}`} className="card prop-card color-inherit">
       <img src={img} alt={p.title} loading="lazy" />
       <div className="body">
         <div className="flex between">
@@ -17,7 +17,7 @@ export default function PropertyCard({ p, showStatus }) {
         <div className="meta">
           {p.city || '—'}{p.state ? `, ${p.state}` : ''}
         </div>
-        <div className="meta flex wrap" style={{ gap: 12 }}>
+        <div className="meta flex wrap gap-12">
           <span>{p.property_type}</span>
           {p.bedrooms != null && <span>{p.bedrooms} bd</span>}
           {p.bathrooms != null && <span>{p.bathrooms} ba</span>}

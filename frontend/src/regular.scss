@@ -1,0 +1,203 @@
+// ==============================
+// Common Utilities
+// ==============================
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.color-inherit {
+  color: inherit;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.w-auto {
+  width: auto;
+}
+
+.p-0 {
+  padding: 0;
+}
+
+.m-0 {
+  margin: 0;
+}
+
+
+// ==============================
+// Spacing
+// ==============================
+
+.mb-6 {
+  margin-bottom: 6px;
+}
+
+.mb-14 {
+  margin-bottom: 14px;
+}
+
+.mb-18 {
+  margin-bottom: 18px;
+}
+
+.mb-20 {
+  margin-bottom: 20px;
+}
+
+.mb-24 {
+  margin-bottom: 24px;
+}
+
+.mb-30 {
+  margin-bottom: 30px;
+}
+
+.mt-10 {
+  margin-top: 10px;
+}
+
+.mt-12 {
+  margin-top: 12px;
+}
+
+.mt-14 {
+  margin-top: 14px;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.mt-20 {
+  margin-top: 20px;
+}
+
+.mt-26 {
+  margin-top: 26px;
+}
+
+.mt-40 {
+  margin-top: 40px;
+}
+
+.my-6 {
+  margin: 6px 0;
+}
+
+.my-14 {
+  margin: 14px 0;
+}
+
+.my-16-24 {
+  margin: 16px 0 24px;
+}
+
+
+// ==============================
+// Typography
+// ==============================
+
+.font-size-13 {
+  font-size: 13px;
+}
+
+.font-size-18 {
+  font-size: 18px;
+}
+
+.font-size-26 {
+  font-size: 26px;
+}
+
+.heading-brand {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--brand);
+}
+
+
+// ==============================
+// Layout
+// ==============================
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.gap-8 {
+  gap: 8px;
+}
+
+.flex-grow-2 {
+  flex: 2;
+}
+
+.flex-grow-2-min-200 {
+  flex: 2;
+  min-width: 200px;
+}
+
+.flex-grow-2-min-220 {
+  flex: 2;
+  min-width: 220px;
+}
+
+.flex-end-gap-8 {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.justify-center-gap-6 {
+  justify-content: center;
+  margin-top: 20px;
+  gap: 6px;
+}
+
+.mt-14-align-start {
+  margin-top: 14px;
+  align-items: flex-start;
+}
+
+
+// ==============================
+// Width / Max Width
+// ==============================
+
+.max-width-440 {
+  max-width: 440px;
+}
+
+.max-width-480 {
+  max-width: 480px;
+}
+
+.max-width-720 {
+  max-width: 720px;
+}
+
+.max-width-760 {
+  max-width: 760px;
+}
+
+
+// ==============================
+// Images
+// ==============================
+
+.image-rounded-cover {
+  width: 100%;
+  border-radius: 12px;
+  max-height: 380px;
+  object-fit: cover;
+}
+
+.thumbnail-cover {
+  width: 90px;
+  height: 66px;
+  object-fit: cover;
+  border-radius: 8px;
+}

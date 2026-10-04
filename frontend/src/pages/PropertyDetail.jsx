@@ -35,34 +35,34 @@ export default function PropertyDetail() {
   return (
     <div className="container">
       <Link to="/browse">← Back to results</Link>
-      <div className="grid cols-2" style={{ marginTop: 14, alignItems: 'start' }}>
+      <div className="grid cols-2 mt-14-align-start">
         <div>
-          <img src={img} alt={p.title} style={{ width: '100%', borderRadius: 12, maxHeight: 380, objectFit: 'cover' }} />
+          <img src={img} alt={p.title} className="image-rounded-cover" />
           {p.images?.length > 1 && (
-            <div className="flex wrap" style={{ marginTop: 10 }}>
+            <div className="flex wrap mt-10">
               {p.images.slice(1).map((u, i) => (
-                <img key={i} src={u} alt="" style={{ width: 90, height: 66, objectFit: 'cover', borderRadius: 8 }} />
+                <img key={i} src={u} alt="" className="thumbnail-cover" />
               ))}
             </div>
           )}
         </div>
         <div>
           <div className="flex between">
-            <h1 className="page-title" style={{ marginBottom: 6 }}>{p.title}</h1>
+            <h1 className="page-title mb-6">{p.title}</h1>
             <Badge value={p.status} />
           </div>
-          <div className="price" style={{ fontSize: 26, fontWeight: 800, color: 'var(--brand)' }}>
+          <div className="price heading-brand">
             {formatMoney(p.price)}{p.listing_type === 'rent' && <small className="muted"> /month</small>}
           </div>
           <p className="muted">{p.address ? p.address + ', ' : ''}{p.city}{p.state ? `, ${p.state}` : ''} {p.pincode}</p>
-          <div className="grid cols-4" style={{ margin: '14px 0' }}>
-            <div className="card stat"><div className="num" style={{ fontSize: 18 }}>{p.property_type}</div><div className="label">Type</div></div>
-            <div className="card stat"><div className="num" style={{ fontSize: 18 }}>{p.bedrooms ?? '—'}</div><div className="label">Beds</div></div>
-            <div className="card stat"><div className="num" style={{ fontSize: 18 }}>{p.bathrooms ?? '—'}</div><div className="label">Baths</div></div>
-            <div className="card stat"><div className="num" style={{ fontSize: 18 }}>{p.area_sqft ?? '—'}</div><div className="label">Sqft</div></div>
+          <div className="grid cols-4 my-14">
+            <div className="card stat"><div className="num font-size-18">{p.property_type}</div><div className="label">Type</div></div>
+            <div className="card stat"><div className="num font-size-18">{p.bedrooms ?? '—'}</div><div className="label">Beds</div></div>
+            <div className="card stat"><div className="num font-size-18">{p.bathrooms ?? '—'}</div><div className="label">Baths</div></div>
+            <div className="card stat"><div className="num font-size-18">{p.area_sqft ?? '—'}</div><div className="label">Sqft</div></div>
           </div>
           <p>{p.description || 'No description provided.'}</p>
-          <div className="card" style={{ marginTop: 10 }}>
+          <div className="card mt-10">
             <strong>Listed by:</strong> {p.seller_name}{' '}
             {p.seller_kyc === 'verified' && <Badge value="verified" />}
           </div>
@@ -72,7 +72,7 @@ export default function PropertyDetail() {
       <Alert type="success">{ok}</Alert>
       {/* Buyer actions */}
       {p.status === 'approved' && (
-        <div className="grid cols-2" style={{ marginTop: 20 }}>
+        <div className="grid cols-2 mt-20">
           <div className="card">
             <h3>Interested in this property?</h3>
             {!user ? (
@@ -106,7 +106,7 @@ export default function PropertyDetail() {
         </div>
       )}
       {(user?.id === p.seller_id) && (
-        <div className="card" style={{ marginTop: 20 }}>
+        <div className="card mt-20">
           <div className="flex between">
             <span>This is your listing.</span>
             <button className="btn secondary small" onClick={() => nav(`/seller/edit/${p.id}`)}>Edit listing</button>

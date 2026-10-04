@@ -21,7 +21,7 @@ export default function Register() {
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   return (
-    <div className="container" style={{ maxWidth: 480 }}>
+    <div className="container max-width-480">
       <h1 className="page-title">Create your account</h1>
       <p className="subtle">Join as a buyer or a seller.</p>
       <form className="card" onSubmit={submit}>
@@ -50,16 +50,16 @@ export default function Register() {
           <input type="password" value={form.password} onChange={set('password')} required minLength={8} />
           <small className="muted">At least 8 characters.</small>
         </div>
-        <div className="field flex" style={{ gap: 8 }}>
-          <input type="checkbox" style={{ width: 'auto' }} checked={form.acceptTerms} onChange={set('acceptTerms')} id="terms" />
-          <label htmlFor="terms" style={{ margin: 0 }}>
+        <div className="field flex gap-8">
+          <input type="checkbox" className="w-auto" checked={form.acceptTerms} onChange={set('acceptTerms')} id="terms" />
+          <label htmlFor="terms" className="m-0">
             I accept the Terms of Service &amp; Compliance policy (KYC may be required).
           </label>
         </div>
-        <button className="btn" style={{ width: '100%' }} disabled={busy}>
+        <button className="btn w-full" disabled={busy}>
           {busy ? 'Creating…' : 'Create account'}
         </button>
-        <p className="muted center" style={{ marginTop: 14 }}>
+        <p className="muted center mt-14">
           Already have an account? <Link to="/login">Log in</Link>
         </p>
       </form>

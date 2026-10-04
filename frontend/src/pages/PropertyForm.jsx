@@ -50,7 +50,7 @@ export default function PropertyForm() {
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   return (
-    <div className="container" style={{ maxWidth: 760 }}>
+    <div className="container max-width-760">
       <h1 className="page-title">{editing ? 'Edit listing' : 'New listing'}</h1>
       <p className="subtle">
         New or edited listings are submitted for compliance review before going public.

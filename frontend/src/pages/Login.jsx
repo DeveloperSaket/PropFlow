@@ -20,7 +20,7 @@ export default function Login() {
   };
   const quick = (em) => { setEmail(em); setPassword(em.includes('admin') ? 'Admin@12345' : 'Password@123'); };
   return (
-    <div className="container" style={{ maxWidth: 440 }}>
+    <div className="container max-width-440">
       <h1 className="page-title">Log in</h1>
       <p className="subtle">Welcome back to PropFlow.</p>
       <form className="card" onSubmit={submit}>
@@ -33,14 +33,14 @@ export default function Login() {
           <label>Password</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
-        <button className="btn" style={{ width: '100%' }} disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
-        <p className="muted center" style={{ marginTop: 14 }}>
+        <button className="btn w-full" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
+        <p className="muted center mt-14">
           No account? <Link to="/register">Sign up</Link>
         </p>
       </form>
-      <div className="card" style={{ marginTop: 16 }}>
+      <div className="card mt-16">
         <strong>Demo accounts</strong>
-        <p className="muted" style={{ fontSize: 13 }}>Click to autofill, then press Log in:</p>
+        <p className="muted font-size-13">Click to autofill, then press Log in:</p>
         <div className="flex wrap">
           <button className="btn small secondary" onClick={() => quick('admin@propflow.test')}>Admin</button>
           <button className="btn small secondary" onClick={() => quick('ravi@seller.test')}>Seller</button>

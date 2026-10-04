@@ -32,13 +32,13 @@ export default function Kyc() {
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   return (
-    <div className="container" style={{ maxWidth: 720 }}>
+    <div className="container max-width-720">
       <h1 className="page-title">Compliance &amp; KYC</h1>
       <p className="subtle">
         Verify your identity to unlock full platform features
         {user?.role === 'seller' ? ' (required before listing a property).' : '.'}
       </p>
-      <div className="card flex between" style={{ marginBottom: 18 }}>
+      <div className="card flex between mb-18">
         <span>Current KYC status</span>
         <Badge value={status || 'unverified'} />
       </div>
@@ -64,11 +64,11 @@ export default function Kyc() {
           <button className="btn" disabled={busy}>{busy ? 'Uploading…' : 'Submit for review'}</button>
         </form>
       )}
-      <h3 style={{ marginTop: 26 }}>Submitted documents</h3>
+      <h3 className="mt-26">Submitted documents</h3>
       {docs.length === 0 ? (
         <p className="muted">No documents submitted yet.</p>
       ) : (
-        <div className="table-wrap card" style={{ padding: 0 }}>
+        <div className="table-wrap card p-0">
           <table>
             <thead><tr><th>Type</th><th>Submitted</th><th>Status</th><th>Note</th></tr></thead>
             <tbody>
