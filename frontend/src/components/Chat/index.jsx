@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getOrCreateChatRoom, listenToMessages, sendMessage } from '../../firebase/chat.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 function formatTimestamp(timestamp) {
 	if (!timestamp?.toDate) return 'Sending...';
@@ -7,6 +8,8 @@ function formatTimestamp(timestamp) {
 }
 
 export default function Chat({ db, currentUserId, buyerId, sellerId, productId, otherUserLabel = 'Seller' }) {
+	const { firebaseError } = useAuth();
+	const normalizedCurrentUserId = String(currentUserId ?? '');
 	const [room, setRoom] = useState(null);
 	const [messages, setMessages] = useState([]);
 	const [text, setText] = useState('');
@@ -52,7 +55,7 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 		setSending(true);
 		setError('');
 		try {
-			await sendMessage(db, room.id, { senderId: currentUserId, text });
+			await sendMessage(db, room.id, { senderId: normalizedCurrentUserId, text });
 			setText('');
 		} catch (sendError) {
 			setError(sendError.message);
@@ -77,7 +80,7 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 					<p className="chat-placeholder">No messages yet. Start the conversation.</p>
 				)}
 				{messages.map((message) => {
-					const ownMessage = message.sender_id === currentUserId;
+					const ownMessage = message.sender_id === normalizedCurrentUserId;
 					return (
 						<div key={message.id} className={`chat-message-row ${ownMessage ? 'own' : 'other'}`}>
 							<div className={`chat-message ${ownMessage ? 'own' : 'other'}`}>
@@ -90,7 +93,7 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 				<div ref={messagesEndRef} />
 			</div>
 
-			{error && <p className="chat-error" role="alert">{error}</p>}
+			{(error || firebaseError) && <p className="chat-error" role="alert">{error || firebaseError}</p>}
 			<form className="chat-form" onSubmit={handleSubmit}>
 				<input
 					value={text}

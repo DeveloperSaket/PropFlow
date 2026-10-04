@@ -10,6 +10,7 @@ export const config = {
     ? path.resolve(process.env.DB_PATH)
     : path.join(__dirname, '..', 'data', 'propflow.db'),
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  firebaseProjectId: process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || '',
   uploadDir: path.join(__dirname, '..', 'uploads'),
   admin: {
     email: process.env.ADMIN_EMAIL || 'admin@propflow.test',

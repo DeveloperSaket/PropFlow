@@ -5,6 +5,7 @@ import { Badge, Stat, Spinner, formatMoney } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Chat from '../components/Chat/index.jsx';
 import { db } from '../firebase/index.js';
+import { listenToSellerChatRooms } from '../firebase/chat.js';
 export default function SellerDashboard() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -13,12 +14,23 @@ export default function SellerDashboard() {
   const [leads, setLeads] = useState(null);
   const [appts, setAppts] = useState(null);
   const [openChatLead, setOpenChatLead] = useState(null);
+  const [chatRooms, setChatRooms] = useState(null);
+  const [chatRoomsError, setChatRoomsError] = useState('');
+  const [activeChatRoomId, setActiveChatRoomId] = useState(null);
   const load = () => {
     api.get('/properties?mine=1&limit=50').then((r) => setListings(r.data));
     api.get('/interests/received').then((r) => setLeads(r.data));
     api.get('/appointments/mine').then((r) => setAppts(r.data));
   };
   useEffect(load, []);
+  useEffect(() => {
+    try {
+      return listenToSellerChatRooms(db, user.id, setChatRooms, (error) => setChatRoomsError(error.message));
+    } catch (error) {
+      setChatRoomsError(error.message);
+      setChatRooms([]);
+    }
+  }, [user.id]);
   const del = async (id) => {
     if (!confirm('Delete this listing?')) return;
     await api.del(`/properties/${id}`);
@@ -31,6 +43,11 @@ export default function SellerDashboard() {
   const approved = listings.filter((l) => l.status === 'approved').length;
   const pending = listings.filter((l) => l.status === 'pending').length;
   const totalViews = listings.reduce((s, l) => s + (l.views || 0), 0);
+  const activeChatRoom = chatRooms?.find((room) => room.id === activeChatRoomId);
+  const activeChatLead = activeChatRoom && leads.find((item) => (
+    String(item.buyer_id) === activeChatRoom.buyer_id
+    && String(item.property_id) === activeChatRoom.product_id
+  ));
   return (
     <div className="container">
       <div className="flex between wrap">
@@ -52,9 +69,9 @@ export default function SellerDashboard() {
         <Stat num={leads.length} label="Buyer leads" color="var(--brand)" />
       </div>
       <div className="tabs">
-        {['listings', 'leads', 'viewings'].map((t) => (
+        {['listings', 'leads', 'viewings', 'chats'].map((t) => (
           <div key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'listings' ? 'My Listings' : t === 'leads' ? `Leads (${leads.length})` : `Viewings (${appts.length})`}
+            {t === 'listings' ? 'My Listings' : t === 'leads' ? `Leads (${leads.length})` : t === 'viewings' ? `Viewings (${appts.length})` : `Chats (${chatRooms?.length ?? 0})`}
           </div>
         ))}
       </div>
@@ -128,6 +145,50 @@ export default function SellerDashboard() {
             </table>
           </div>
         )
+      )}
+      {tab === 'chats' && (
+        <>
+          {chatRoomsError && <div className="alert error">{chatRoomsError}</div>}
+          {chatRooms === null ? <Spinner /> : chatRooms.length === 0 ? (
+            <p className="muted">No buyer chats yet.</p>
+          ) : (
+            <div className="table-wrap card p-0">
+              <table>
+                <thead><tr><th>Property</th><th>Buyer</th><th>Last message</th><th>Updated</th><th></th></tr></thead>
+                <tbody>
+                  {chatRooms.map((room) => {
+                    const lead = leads.find((item) => String(item.buyer_id) === room.buyer_id && String(item.property_id) === room.product_id);
+                    return (
+                      <tr key={room.id}>
+                        <td>{lead?.title || `Property #${room.product_id}`}</td>
+                        <td>{lead?.buyer_name || `Buyer #${room.buyer_id}`}</td>
+                        <td className="muted">{room.last_message || 'No messages yet'}</td>
+                        <td>{room.last_updated?.toDate?.().toLocaleString() || 'Just now'}</td>
+                        <td>
+                          <button className="btn small" onClick={() => setActiveChatRoomId(activeChatRoomId === room.id ? null : room.id)}>
+                            {activeChatRoomId === room.id ? 'Close' : 'Open chat'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {activeChatRoom && (
+            <div className="mt-20">
+              <Chat
+                db={db}
+                currentUserId={user.id}
+                buyerId={activeChatRoom.buyer_id}
+                sellerId={activeChatRoom.seller_id}
+                productId={activeChatRoom.product_id}
+                otherUserLabel={activeChatLead?.buyer_name || `Buyer #${activeChatRoom.buyer_id}`}
+              />
+            </div>
+          )}
+        </>
       )}
       {tab === 'viewings' && (
         appts.length === 0 ? <p className="muted">No viewing requests.</p> : (

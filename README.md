@@ -47,10 +47,23 @@ JWT_SECRET=<long random string>
 JWT_EXPIRES_IN=7d
 DB_PATH=./data/propflow.db
 CORS_ORIGIN=http://localhost:5173
+FIREBASE_PROJECT_ID=<your Firebase project ID>
+# Keep this service-account JSON outside the repository.
+GOOGLE_APPLICATION_CREDENTIALS=C:/secure/path/firebase-service-account.json
 ADMIN_EMAIL=admin@propflow.test
 ADMIN_PASSWORD=Admin@12345
 ```
 An admin account is auto-created on first boot if none exists.
+
+### Firebase chat setup
+1. In Firebase Console, enable **Authentication** and create the **Cloud Firestore** database.
+2. Add the Firebase web app settings to `frontend/.env.local` using the `VITE_FIREBASE_*` names. Never put a service-account key in frontend files.
+3. For local backend development, create a service-account key in **Project settings → Service accounts**. Store its JSON outside this repository and set `GOOGLE_APPLICATION_CREDENTIALS` in `backend/.env`. In production, use the hosting platform's Application Default Credentials where possible.
+4. Set `FIREBASE_PROJECT_ID` in `backend/.env`. The backend exchanges the existing API JWT identity for a Firebase custom token at `GET /api/auth/firebase-token`; Firebase UIDs are the string form of PropFlow user IDs.
+5. Publish the participant-only Firestore rules from the repository root with `npx firebase-tools deploy --only firestore:rules --project <your-project-id>`.
+6. Restart the app with `npm run dev`. Firebase sign-in runs after API login, registration, and session restoration. Chat IDs are stored as strings and message/room-summary writes are atomic.
+
+The backend service account is privileged. Keep it out of source control, frontend files, logs, and client responses. `.env.local` and `backend/.env` are ignored by Git.
 ---
 ## 5. Project structure
 ```
@@ -83,6 +96,7 @@ propflow/
 | POST | `/auth/register` | — | Register buyer/seller (requires `acceptTerms`) |
 | POST | `/auth/login` | — | Login, returns JWT |
 | GET | `/auth/me` | token | Current user |
+| GET | `/auth/firebase-token` | token | Mint a Firebase custom token for the current user |
 ### Properties
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|

@@ -9,6 +9,7 @@ import {
 import { required, isEmail, oneOf, HttpError } from '../utils/validate.js';
 import { authenticate } from '../middleware/auth.js';
 import { audit } from '../utils/audit.js';
+import { createFirebaseCustomToken } from '../utils/firebase.js';
 const router = Router();
 const findByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
 const insertUser = db.prepare(
@@ -71,5 +72,16 @@ router.post('/login', (req, res) => {
 router.get('/me', authenticate, (req, res) => {
   const user = getById.get(req.user.id);
   res.json({ user: publicUser(user) });
+});
+// GET /api/auth/firebase-token — exchange the app JWT identity for Firebase Auth
+router.get('/firebase-token', authenticate, async (req, res, next) => {
+  try {
+    const uid = String(req.user.id);
+    const customToken = await createFirebaseCustomToken(uid);
+    res.json({ customToken, uid });
+  } catch (error) {
+    console.error('[propflow] Firebase custom token creation failed:', error.message);
+    next(new HttpError(503, 'Firebase authentication is not configured on the server'));
+  }
 });
 export default router;
