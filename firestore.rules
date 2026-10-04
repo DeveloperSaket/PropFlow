@@ -12,7 +12,11 @@ service cloud.firestore {
     }
 
     match /chat_rooms/{roomId} {
-      allow get, list: if isParticipant(resource.data);
+      allow get: if isParticipant(resource.data);
+      allow get: if signedIn()
+        && !exists(/databases/$(database)/documents/chat_rooms/$(roomId))
+        && roomId.matches('^' + request.auth.uid + '_.*$');
+      allow list: if isParticipant(resource.data);
 
       allow create: if signedIn()
         && request.resource.data.keys().hasAll([
