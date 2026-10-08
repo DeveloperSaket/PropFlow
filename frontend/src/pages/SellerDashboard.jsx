@@ -30,7 +30,18 @@ export default function SellerDashboard() {
   useEffect(load, []);
   useEffect(() => {
     try {
-      return listenToSellerChatRooms(db, user.id, setChatRooms, (error) => setChatRoomsError(error.message));
+      return listenToSellerChatRooms(
+        db,
+        user.id,
+        (rooms) => {
+          setChatRooms(rooms);
+          setChatRoomsError('');
+        },
+        (error) => {
+          setChatRoomsError(error.message);
+          setChatRooms([]);
+        },
+      );
     } catch (error) {
       setChatRoomsError(error.message);
       setChatRooms([]);
@@ -56,11 +67,36 @@ export default function SellerDashboard() {
   const pending = listings.filter((l) => l.status === 'pending').length;
   const totalViews = listings.reduce((s, l) => s + (l.views || 0), 0);
   const unreadChatCount = getUnreadChatCount(chatRooms || [], user.id);
-  const activeChatRoom = chatRooms?.find((room) => room.id === activeChatRoomId);
-  const activeChatLead = activeChatRoom && leads.find((item) => (
-    String(item.buyer_id) === activeChatRoom.buyer_id
-    && String(item.property_id) === activeChatRoom.product_id
-  ));
+  const sellerChatItems = [
+    ...leads.map((lead) => {
+      const room = (chatRooms || []).find((chatRoom) => (
+        String(chatRoom.buyer_id) === String(lead.buyer_id)
+        && String(chatRoom.product_id) === String(lead.property_id)
+      ));
+      return {
+        key: `${lead.buyer_id}_${user.id}_${lead.property_id}`,
+        room,
+        lead,
+        buyerId: String(lead.buyer_id),
+        sellerId: String(user.id),
+        productId: String(lead.property_id),
+      };
+    }),
+    ...(chatRooms || [])
+      .filter((room) => !leads.some((lead) => (
+        String(lead.buyer_id) === room.buyer_id
+        && String(lead.property_id) === room.product_id
+      )))
+      .map((room) => ({
+        key: room.id,
+        room,
+        lead: null,
+        buyerId: room.buyer_id,
+        sellerId: room.seller_id,
+        productId: room.product_id,
+      })),
+  ];
+  const activeChatItem = sellerChatItems.find((item) => item.key === activeChatRoomId);
   return (
     <div className="container">
       <div className="flex between wrap">
@@ -162,25 +198,26 @@ export default function SellerDashboard() {
       {tab === 'chats' && (
         <>
           {chatRoomsError && <div className="alert error">{chatRoomsError}</div>}
-          {chatRooms === null ? <Spinner /> : chatRooms.length === 0 ? (
-            <p className="muted">No buyer chats yet.</p>
+          {sellerChatItems.length === 0 ? (
+            <p className="muted">No buyer conversations yet. Conversations will appear here when buyers contact you about a listing.</p>
           ) : (
             <div className="table-wrap card p-0">
               <table>
                 <thead><tr><th>Property</th><th>Buyer</th><th>Last message</th><th>Updated</th><th>Status</th><th></th></tr></thead>
                 <tbody>
-                  {chatRooms.map((room) => {
-                    const lead = leads.find((item) => String(item.buyer_id) === room.buyer_id && String(item.property_id) === room.product_id);
+                  {sellerChatItems.map((item) => {
+                    const room = item.room;
+                    const lead = item.lead;
                     return (
-                      <tr key={room.id}>
-                        <td>{lead?.title || `Property #${room.product_id}`}</td>
-                        <td>{lead?.buyer_name || `Buyer #${room.buyer_id}`}</td>
-                        <td className="muted">{room.last_message || 'No messages yet'}</td>
-                        <td>{room.last_updated?.toDate?.().toLocaleString() || 'Just now'}</td>
-                        <td>{getUnreadChatCount([room], user.id) > 0 && <span className="badge pending">New</span>}</td>
+                      <tr key={item.key}>
+                        <td>{lead?.title || `Property #${item.productId}`}</td>
+                        <td>{lead?.buyer_name || `Buyer #${item.buyerId}`}</td>
+                        <td className="muted">{room?.last_message || 'No messages yet'}</td>
+                        <td>{room?.last_updated?.toDate?.().toLocaleString() || 'Not started'}</td>
+                        <td>{room && getUnreadChatCount([room], user.id) > 0 && <span className="badge pending">New</span>}</td>
                         <td>
-                          <button className="btn small" onClick={() => setActiveChatRoomId(activeChatRoomId === room.id ? null : room.id)}>
-                            {activeChatRoomId === room.id ? 'Close' : 'Open chat'}
+                          <button className="btn small" onClick={() => setActiveChatRoomId(activeChatRoomId === item.key ? null : item.key)}>
+                            {activeChatRoomId === item.key ? 'Close' : room ? 'Open chat' : 'Start chat'}
                           </button>
                         </td>
                       </tr>
@@ -190,15 +227,15 @@ export default function SellerDashboard() {
               </table>
             </div>
           )}
-          {activeChatRoom && (
+          {activeChatItem && (
             <div className="mt-20">
               <Chat
                 db={db}
                 currentUserId={user.id}
-                buyerId={activeChatRoom.buyer_id}
-                sellerId={activeChatRoom.seller_id}
-                productId={activeChatRoom.product_id}
-                otherUserLabel={activeChatLead?.buyer_name || `Buyer #${activeChatRoom.buyer_id}`}
+                buyerId={activeChatItem.buyerId}
+                sellerId={activeChatItem.sellerId}
+                productId={activeChatItem.productId}
+                otherUserLabel={activeChatItem.lead?.buyer_name || `Buyer #${activeChatItem.buyerId}`}
               />
             </div>
           )}
