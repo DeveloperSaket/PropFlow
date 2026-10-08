@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { Badge, Stat, Spinner, formatMoney } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Chat from '../components/Chat/index.jsx';
 import { db } from '../firebase/index.js';
-import { listenToSellerChatRooms } from '../firebase/chat.js';
+import { getUnreadChatCount, listenToSellerChatRooms } from '../firebase/chat.js';
 export default function SellerDashboard() {
   const { user } = useAuth();
   const nav = useNavigate();
-  const [tab, setTab] = useState('listings');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState(() => searchParams.get('tab') || 'listings');
   const [listings, setListings] = useState(null);
   const [leads, setLeads] = useState(null);
   const [appts, setAppts] = useState(null);
@@ -22,6 +23,10 @@ export default function SellerDashboard() {
     api.get('/interests/received').then((r) => setLeads(r.data));
     api.get('/appointments/mine').then((r) => setAppts(r.data));
   };
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    setTab(['listings', 'leads', 'viewings', 'chats'].includes(requestedTab) ? requestedTab : 'listings');
+  }, [searchParams]);
   useEffect(load, []);
   useEffect(() => {
     try {
@@ -39,10 +44,18 @@ export default function SellerDashboard() {
   const markSold = async (id) => { await api.patch(`/properties/${id}/sold`); load(); };
   const setLead = async (id, status) => { await api.patch(`/interests/${id}/status`, { status }); load(); };
   const setAppt = async (id, status) => { await api.patch(`/appointments/${id}/status`, { status }); load(); };
+  const selectTab = (nextTab) => {
+    setTab(nextTab);
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextTab === 'listings') nextParams.delete('tab');
+    else nextParams.set('tab', nextTab);
+    setSearchParams(nextParams, { replace: true });
+  };
   if (!listings || !leads || !appts) return <Spinner />;
   const approved = listings.filter((l) => l.status === 'approved').length;
   const pending = listings.filter((l) => l.status === 'pending').length;
   const totalViews = listings.reduce((s, l) => s + (l.views || 0), 0);
+  const unreadChatCount = getUnreadChatCount(chatRooms || [], user.id);
   const activeChatRoom = chatRooms?.find((room) => room.id === activeChatRoomId);
   const activeChatLead = activeChatRoom && leads.find((item) => (
     String(item.buyer_id) === activeChatRoom.buyer_id
@@ -70,8 +83,8 @@ export default function SellerDashboard() {
       </div>
       <div className="tabs">
         {['listings', 'leads', 'viewings', 'chats'].map((t) => (
-          <div key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'listings' ? 'My Listings' : t === 'leads' ? `Leads (${leads.length})` : t === 'viewings' ? `Viewings (${appts.length})` : `Chats (${chatRooms?.length ?? 0})`}
+          <div key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => selectTab(t)}>
+            {t === 'listings' ? 'My Listings' : t === 'leads' ? `Leads (${leads.length})` : t === 'viewings' ? `Viewings (${appts.length})` : `Chats (${chatRooms?.length ?? 0})${unreadChatCount ? ` · ${unreadChatCount} new` : ''}`}
           </div>
         ))}
       </div>
@@ -154,7 +167,7 @@ export default function SellerDashboard() {
           ) : (
             <div className="table-wrap card p-0">
               <table>
-                <thead><tr><th>Property</th><th>Buyer</th><th>Last message</th><th>Updated</th><th></th></tr></thead>
+                <thead><tr><th>Property</th><th>Buyer</th><th>Last message</th><th>Updated</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                   {chatRooms.map((room) => {
                     const lead = leads.find((item) => String(item.buyer_id) === room.buyer_id && String(item.property_id) === room.product_id);
@@ -164,6 +177,7 @@ export default function SellerDashboard() {
                         <td>{lead?.buyer_name || `Buyer #${room.buyer_id}`}</td>
                         <td className="muted">{room.last_message || 'No messages yet'}</td>
                         <td>{room.last_updated?.toDate?.().toLocaleString() || 'Just now'}</td>
+                        <td>{getUnreadChatCount([room], user.id) > 0 && <span className="badge pending">New</span>}</td>
                         <td>
                           <button className="btn small" onClick={() => setActiveChatRoomId(activeChatRoomId === room.id ? null : room.id)}>
                             {activeChatRoomId === room.id ? 'Close' : 'Open chat'}

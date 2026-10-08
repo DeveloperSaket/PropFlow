@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { getOrCreateChatRoom, listenToMessages, sendMessage } from '../../firebase/chat.js';
+import { getOrCreateChatRoom, listenToMessages, markChatRoomRead, sendMessage } from '../../firebase/chat.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 function formatTimestamp(timestamp) {
@@ -29,7 +29,10 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 				const chatRoom = await getOrCreateChatRoom(db, { buyerId, sellerId, productId });
 				if (!active) return;
 				setRoom(chatRoom);
-				unsubscribe = listenToMessages(db, chatRoom.id, setMessages, setError);
+				unsubscribe = listenToMessages(db, chatRoom.id, (nextMessages) => {
+					setMessages(nextMessages);
+					markChatRoomRead(db, chatRoom.id, currentUserId, chatRoom).catch((readError) => setError(readError.message));
+				}, setError);
 			} catch (chatError) {
 				if (active) setError(chatError.message);
 			} finally {
