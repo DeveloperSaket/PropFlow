@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import { Spinner } from './components/ui.jsx';
+import { db } from './firebase/index.js';
+import { getUnreadChatCount, listenToSellerChatRooms } from './firebase/chat.js';
 import Home from './pages/Home.jsx';
 import Browse from './pages/Browse.jsx';
 import PropertyDetail from './pages/PropertyDetail.jsx';
@@ -21,13 +24,34 @@ function Protected({ children, roles }) {
 function Navbar() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  useEffect(() => {
+    if (user?.role !== 'seller') {
+      setUnreadChatCount(0);
+      return undefined;
+    }
+
+    try {
+      return listenToSellerChatRooms(db, user.id, (rooms) => {
+        setUnreadChatCount(getUnreadChatCount(rooms, user.id));
+      }, () => setUnreadChatCount(0));
+    } catch {
+      setUnreadChatCount(0);
+      return undefined;
+    }
+  }, [user?.id, user?.role]);
   const doLogout = () => { logout(); nav('/'); };
   return (
     <nav className="nav">
       <Link to="/" className="brand">Prop<span>Flow</span></Link>
       <NavLink to="/browse">Browse</NavLink>
       {user?.role === 'buyer' && <NavLink to="/buyer">My Dashboard</NavLink>}
-      {user?.role === 'seller' && <NavLink to="/seller">Seller Dashboard</NavLink>}
+      {user?.role === 'seller' && <NavLink to="/seller" end>Seller Dashboard</NavLink>}
+      {user?.role === 'seller' && (
+        <NavLink to="/seller?tab=chats">
+          Chats{unreadChatCount > 0 && <span className="nav-unread" aria-label={`${unreadChatCount} unread chats`}>{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>}
+        </NavLink>
+      )}
       {user?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
       {user && user.role !== 'admin' && <NavLink to="/kyc">Compliance</NavLink>}
       <span className="spacer" />

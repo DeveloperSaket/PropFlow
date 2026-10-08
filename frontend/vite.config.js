@@ -13,7 +13,8 @@ export default defineConfig({
       preprocessorOptions: {
         scss: {
           // Modern Sass compiler configuration
-          api: 'modern-compiler',
+          api: 'modern',
+          // api: 'modern-compiler',
           // Automatically injects global SCSS variables into every SCSS file
           additionalData: `@use "@/styles/_variables.scss" as *;`
         }
