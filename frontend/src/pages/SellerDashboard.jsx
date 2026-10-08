@@ -89,7 +89,7 @@ export default function SellerDashboard() {
         ))}
       </div>
       {tab === 'listings' && (
-        listings.length === 0 ? <p className="muted">No listings yet.</p> : (
+        listings.length === 0 ? <p className="muted">No listings yet. <button className="btn small" onClick={() => nav('/seller/new')}>Create a listing</button></p> : (
           <div className="table-wrap card p-0">
             <table>
               <thead><tr><th>Title</th><th>Price</th><th>City</th><th>Status</th><th>Views</th><th>Interests</th><th>Actions</th></tr></thead>

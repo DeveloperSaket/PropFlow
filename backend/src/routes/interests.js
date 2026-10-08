@@ -38,7 +38,7 @@ router.get('/mine', authenticate, requireRole('buyer', 'seller'), (req, res) => 
     const rows = db
         .prepare(
             `SELECT i.*, p.title, p.price, p.city, p.status AS property_status,
-              p.property_type, p.listing_type, u.name AS seller_name
+              p.property_type, p.listing_type, p.seller_id, u.name AS seller_name
        FROM interests i
        JOIN properties p ON p.id = i.property_id
        JOIN users u ON u.id = p.seller_id

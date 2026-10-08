@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, NavLink, Link, useNavigate } from 'react-route
 import { useAuth } from './context/AuthContext.jsx';
 import { Spinner } from './components/ui.jsx';
 import { db } from './firebase/index.js';
-import { getUnreadChatCount, listenToSellerChatRooms } from './firebase/chat.js';
+import { getUnreadChatCount, listenToBuyerChatRooms } from './firebase/chat.js';
 import Home from './pages/Home.jsx';
 import Browse from './pages/Browse.jsx';
 import PropertyDetail from './pages/PropertyDetail.jsx';
@@ -32,7 +32,7 @@ function Navbar() {
     }
 
     try {
-      return listenToSellerChatRooms(db, user.id, (rooms) => {
+      return listenToBuyerChatRooms(db, user.id, (rooms) => {
         setUnreadChatCount(getUnreadChatCount(rooms, user.id));
       }, () => setUnreadChatCount(0));
     } catch {
@@ -48,7 +48,7 @@ function Navbar() {
       {user && user.role !== 'admin' && <NavLink to="/buyer">Buying</NavLink>}
       {user && user.role !== 'admin' && <NavLink to="/seller" end>Selling</NavLink>}
       {user && user.role !== 'admin' && (
-        <NavLink to="/seller?tab=chats">
+        <NavLink to="/buyer?tab=chats">
           Chats{unreadChatCount > 0 && <span className="nav-unread" aria-label={`${unreadChatCount} unread chats`}>{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>}
         </NavLink>
       )}
@@ -83,10 +83,10 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/kyc" element={<Protected roles={['buyer', 'seller']}><Kyc /></Protected>} />
-        <Route path="/buyer" element={<Protected roles={['buyer']}><BuyerDashboard /></Protected>} />
-        <Route path="/seller" element={<Protected roles={['seller']}><SellerDashboard /></Protected>} />
-        <Route path="/seller/new" element={<Protected roles={['seller']}><PropertyForm /></Protected>} />
-        <Route path="/seller/edit/:id" element={<Protected roles={['seller']}><PropertyForm /></Protected>} />
+        <Route path="/buyer" element={<Protected roles={['buyer', 'seller']}><BuyerDashboard /></Protected>} />
+        <Route path="/seller" element={<Protected roles={['buyer', 'seller']}><SellerDashboard /></Protected>} />
+        <Route path="/seller/new" element={<Protected roles={['buyer', 'seller']}><PropertyForm /></Protected>} />
+        <Route path="/seller/edit/:id" element={<Protected roles={['buyer', 'seller']}><PropertyForm /></Protected>} />
         <Route path="/admin" element={<Protected roles={['admin']}><AdminDashboard /></Protected>} />
         <Route path="*" element={<div className="container"><h2>404 — Page not found</h2><Link to="/">Go home</Link></div>} />
       </Routes>
