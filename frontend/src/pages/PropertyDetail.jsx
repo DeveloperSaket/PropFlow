@@ -73,14 +73,14 @@ export default function PropertyDetail() {
       <Alert type="error">{err}</Alert>
       <Alert type="success">{ok}</Alert>
       {/* Buyer actions */}
-      {p.status === 'approved' && (
+      {p.status === 'approved' && user?.id !== p.seller_id && (
         <div className="grid cols-2 mt-20">
           <div className="card">
             <h3>Interested in this property?</h3>
             {!user ? (
-              <p className="muted">Please <Link to="/login">log in</Link> as a buyer to express interest.</p>
-            ) : user.role !== 'buyer' ? (
-              <p className="muted">Only buyer accounts can express interest.</p>
+              <p className="muted">Please <Link to="/login">log in</Link> to express interest.</p>
+            ) : user.role === 'admin' ? (
+              <p className="muted">Admin accounts cannot express buyer interest.</p>
             ) : (
               <>
                 <div className="field">
@@ -93,7 +93,7 @@ export default function PropertyDetail() {
           </div>
           <div className="card">
             <h3>Book a viewing</h3>
-            {user?.role === 'buyer' ? (
+            {user && user.role !== 'admin' ? (
               <>
                 <div className="field">
                   <label>Preferred date & time</label>
@@ -102,7 +102,7 @@ export default function PropertyDetail() {
                 <button className="btn green" disabled={!when} onClick={bookViewing}>Request viewing</button>
               </>
             ) : (
-              <p className="muted">Log in as a buyer to schedule a property viewing.</p>
+              <p className="muted">Log in to schedule a property viewing.</p>
             )}
           </div>
         </div>
@@ -118,7 +118,7 @@ export default function PropertyDetail() {
           )}
         </div>
       )}
-      {p.status === 'approved' && user?.role === 'buyer' && user.id !== p.seller_id && (
+      {p.status === 'approved' && user && user.role !== 'admin' && user.id !== p.seller_id && (
         <div className="mt-20">
           <Chat
             db={db}

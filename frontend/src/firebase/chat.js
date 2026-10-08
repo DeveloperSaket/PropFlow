@@ -139,3 +139,25 @@ export function listenToSellerChatRooms(db, sellerId, onRooms, onError) {
     },
   );
 }
+
+export function listenToBuyerChatRooms(db, buyerId, onRooms, onError) {
+  if (!db) throw new Error('Firebase Firestore is not configured.');
+  if (!buyerId) throw new Error('A buyer ID is required.');
+
+  const roomsQuery = query(
+    collection(db, 'chat_rooms'),
+    where('buyer_id', '==', String(buyerId)),
+  );
+
+  return onSnapshot(
+    roomsQuery,
+    (snapshot) => {
+      const rooms = snapshot.docs.map((room) => ({ id: room.id, ...room.data() }));
+      rooms.sort((left, right) => (right.last_updated?.toMillis?.() ?? 0) - (left.last_updated?.toMillis?.() ?? 0));
+      onRooms(rooms);
+    },
+    (error) => {
+      onError?.(new Error(`Unable to listen for chats: ${error.message}`));
+    },
+  );
+}

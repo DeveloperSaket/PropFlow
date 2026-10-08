@@ -10,12 +10,14 @@ const insertAppt = db.prepare(
    VALUES (?, ?, ?, ?, ?)`
 );
 // POST /api/appointments — buyer requests a property viewing
-router.post('/', authenticate, requireRole('buyer'), (req, res) => {
+router.post('/', authenticate, requireRole('buyer', 'seller'), (req, res) => {
   const { property_id, scheduled_at, notes } = req.body;
   required(req.body, ['property_id', 'scheduled_at']);
   const prop = getProperty.get(property_id);
   if (!prop || prop.status !== 'approved')
     throw new HttpError(404, 'Property not available');
+  if (prop.seller_id === req.user.id)
+    throw new HttpError(403, 'You cannot request a viewing for your own listing');
   const when = new Date(scheduled_at);
   if (Number.isNaN(when.getTime())) throw new HttpError(400, 'Invalid date/time');
   if (when.getTime() < Date.now())
@@ -40,39 +42,30 @@ router.post('/', authenticate, requireRole('buyer'), (req, res) => {
 });
 // GET /api/appointments/mine — role-aware list for dashboards
 router.get('/mine', authenticate, (req, res) => {
-  let rows;
-  if (req.user.role === 'buyer') {
-    rows = db
-      .prepare(
-        `SELECT a.*, p.title, p.city, u.name AS seller_name, u.phone AS seller_phone
-         FROM appointments a
-         JOIN properties p ON p.id = a.property_id
-         JOIN users u ON u.id = a.seller_id
-         WHERE a.buyer_id = ? ORDER BY a.scheduled_at DESC`
-      )
-      .all(req.user.id);
-  } else if (req.user.role === 'seller') {
-    rows = db
-      .prepare(
-        `SELECT a.*, p.title, p.city, u.name AS buyer_name, u.phone AS buyer_phone
-         FROM appointments a
-         JOIN properties p ON p.id = a.property_id
-         JOIN users u ON u.id = a.buyer_id
-         WHERE a.seller_id = ? ORDER BY a.scheduled_at DESC`
-      )
-      .all(req.user.id);
-  } else {
-    rows = db
-      .prepare(
-        `SELECT a.*, p.title, bu.name AS buyer_name, su.name AS seller_name
-         FROM appointments a
-         JOIN properties p ON p.id = a.property_id
-         JOIN users bu ON bu.id = a.buyer_id
-         JOIN users su ON su.id = a.seller_id
-         ORDER BY a.scheduled_at DESC`
-      )
-      .all();
-  }
+  const view = req.query.view;
+  if (view) oneOf(view, ['buyer', 'seller'], 'view');
+  const participantFilter = view === 'buyer'
+    ? 'WHERE a.buyer_id = ?'
+    : view === 'seller'
+      ? 'WHERE a.seller_id = ?'
+      : req.user.role === 'admin'
+        ? ''
+        : 'WHERE (a.buyer_id = ? OR a.seller_id = ?)';
+  const query = db.prepare(
+    `SELECT a.*, p.title, p.city, bu.name AS buyer_name, bu.phone AS buyer_phone,
+            su.name AS seller_name, su.phone AS seller_phone
+     FROM appointments a
+     JOIN properties p ON p.id = a.property_id
+     JOIN users bu ON bu.id = a.buyer_id
+     JOIN users su ON su.id = a.seller_id
+     ${participantFilter}
+     ORDER BY a.scheduled_at DESC`
+  );
+  const rows = participantFilter === 'WHERE (a.buyer_id = ? OR a.seller_id = ?)'
+    ? query.all(req.user.id, req.user.id)
+    : participantFilter
+      ? query.all(req.user.id)
+      : query.all();
   res.json({ data: rows });
 });
 // PATCH /api/appointments/:id/status
