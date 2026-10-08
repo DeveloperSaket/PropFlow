@@ -26,7 +26,7 @@ function Navbar() {
   const nav = useNavigate();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   useEffect(() => {
-    if (user?.role !== 'seller') {
+    if (!user || user.role === 'admin') {
       setUnreadChatCount(0);
       return undefined;
     }
@@ -45,9 +45,9 @@ function Navbar() {
     <nav className="nav">
       <Link to="/" className="brand">Prop<span>Flow</span></Link>
       <NavLink to="/browse">Browse</NavLink>
-      {user?.role === 'buyer' && <NavLink to="/buyer">My Dashboard</NavLink>}
-      {user?.role === 'seller' && <NavLink to="/seller" end>Seller Dashboard</NavLink>}
-      {user?.role === 'seller' && (
+      {user && user.role !== 'admin' && <NavLink to="/buyer">Buying</NavLink>}
+      {user && user.role !== 'admin' && <NavLink to="/seller" end>Selling</NavLink>}
+      {user && user.role !== 'admin' && (
         <NavLink to="/seller?tab=chats">
           Chats{unreadChatCount > 0 && <span className="nav-unread" aria-label={`${unreadChatCount} unread chats`}>{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>}
         </NavLink>
@@ -57,7 +57,7 @@ function Navbar() {
       <span className="spacer" />
       {user ? (
         <>
-          <span className="pill">{user.name} · {user.role}</span>
+          <span className="pill">{user.name} · {user.role === 'admin' ? 'Admin' : 'Buyer & Seller'}</span>
           <a onClick={doLogout} className="cursor-pointer">Logout</a>
         </>
       ) : (

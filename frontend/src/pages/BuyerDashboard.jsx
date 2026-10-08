@@ -9,7 +9,7 @@ export default function BuyerDashboard() {
   const [appts, setAppts] = useState(null);
   const load = () => {
     api.get('/interests/mine').then((r) => setInterests(r.data));
-    api.get('/appointments/mine').then((r) => setAppts(r.data));
+    api.get('/appointments/mine?view=buyer').then((r) => setAppts(r.data));
   };
   useEffect(load, []);
   const withdraw = async (id) => {

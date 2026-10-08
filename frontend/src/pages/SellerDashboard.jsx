@@ -21,7 +21,7 @@ export default function SellerDashboard() {
   const load = () => {
     api.get('/properties?mine=1&limit=50').then((r) => setListings(r.data));
     api.get('/interests/received').then((r) => setLeads(r.data));
-    api.get('/appointments/mine').then((r) => setAppts(r.data));
+    api.get('/appointments/mine?view=seller').then((r) => setAppts(r.data));
   };
   useEffect(() => {
     const requestedTab = searchParams.get('tab');

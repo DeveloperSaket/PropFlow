@@ -12,11 +12,13 @@ const insertInterest = db.prepare(
     'INSERT INTO interests (property_id, buyer_id, message) VALUES (?, ?, ?)'
 );
 // POST /api/interests — buyer expresses interest in a property
-router.post('/', authenticate, requireRole('buyer'), (req, res) => {
+router.post('/', authenticate, requireRole('buyer', 'seller'), (req, res) => {
     const { property_id, message } = req.body;
     const prop = getProperty.get(property_id);
     if (!prop || prop.status !== 'approved')
         throw new HttpError(404, 'Property not available');
+    if (prop.seller_id === req.user.id)
+        throw new HttpError(403, 'You cannot express interest in your own listing');
     if (existing.get(property_id, req.user.id))
         throw new HttpError(409, 'You have already expressed interest in this property');
     const info = insertInterest.run(property_id, req.user.id, message || null);
@@ -32,7 +34,7 @@ router.post('/', authenticate, requireRole('buyer'), (req, res) => {
     });
 });
 // GET /api/interests/mine — buyer's tracked interests (dashboard)
-router.get('/mine', authenticate, requireRole('buyer'), (req, res) => {
+router.get('/mine', authenticate, requireRole('buyer', 'seller'), (req, res) => {
     const rows = db
         .prepare(
             `SELECT i.*, p.title, p.price, p.city, p.status AS property_status,
@@ -47,7 +49,7 @@ router.get('/mine', authenticate, requireRole('buyer'), (req, res) => {
     res.json({ data: rows });
 });
 // GET /api/interests/received — seller sees leads on their properties
-router.get('/received', authenticate, requireRole('seller'), (req, res) => {
+router.get('/received', authenticate, requireRole('buyer', 'seller'), (req, res) => {
     const rows = db
         .prepare(
             `SELECT i.*, p.title, p.city, p.price,
@@ -74,8 +76,8 @@ router.patch('/:id/status', authenticate, requireRole('seller', 'buyer'), (req, 
         .get(req.params.id);
     if (!row) throw new HttpError(404, 'Interest not found');
     // Seller can manage leads on own listings; buyer can withdraw own interest.
-    const isSeller = req.user.role === 'seller' && row.seller_id === req.user.id;
-    const isBuyer = req.user.role === 'buyer' && row.buyer_id === req.user.id;
+    const isSeller = row.seller_id === req.user.id;
+    const isBuyer = row.buyer_id === req.user.id;
     if (!isSeller && !isBuyer) throw new HttpError(403, 'Not allowed');
     if (isBuyer && status !== 'withdrawn')
         throw new HttpError(403, 'Buyers can only withdraw their interest');

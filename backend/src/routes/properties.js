@@ -163,7 +163,7 @@ router.get('/:id', optionalAuth, (req, res) => {
   res.json({ data: hydrate(getPropertyRow.get(req.params.id)) });
 });
 // POST /api/properties — seller creates a listing (requires KYC)
-router.post('/', authenticate, requireRole('seller'), requireKyc, (req, res) => {
+router.post('/', authenticate, requireRole('buyer', 'seller'), requireKyc, (req, res) => {
   const b = req.body;
   required(b, ['title', 'property_type', 'listing_type', 'price']);
   oneOf(b.property_type, PROPERTY_TYPES, 'property_type');
@@ -207,7 +207,7 @@ router.post('/', authenticate, requireRole('seller'), requireKyc, (req, res) => 
   res.status(201).json({ data: hydrate(getPropertyRow.get(id)) });
 });
 // PUT /api/properties/:id — owner updates (re-enters pending review)
-router.put('/:id', authenticate, requireRole('seller', 'admin'), (req, res) => {
+router.put('/:id', authenticate, requireRole('buyer', 'seller', 'admin'), (req, res) => {
   const row = getPropertyRow.get(req.params.id);
   if (!row) throw new HttpError(404, 'Property not found');
   const isAdmin = req.user.role === 'admin';
@@ -266,7 +266,7 @@ router.put('/:id', authenticate, requireRole('seller', 'admin'), (req, res) => {
   res.json({ data: hydrate(getPropertyRow.get(row.id)) });
 });
 // PATCH /api/properties/:id/sold — owner marks as sold
-router.patch('/:id/sold', authenticate, requireRole('seller', 'admin'), (req, res) => {
+router.patch('/:id/sold', authenticate, requireRole('buyer', 'seller', 'admin'), (req, res) => {
   const row = getPropertyRow.get(req.params.id);
   if (!row) throw new HttpError(404, 'Property not found');
   if (req.user.role !== 'admin' && row.seller_id !== req.user.id)
@@ -278,7 +278,7 @@ router.patch('/:id/sold', authenticate, requireRole('seller', 'admin'), (req, re
   res.json({ data: hydrate(getPropertyRow.get(row.id)) });
 });
 // DELETE /api/properties/:id
-router.delete('/:id', authenticate, requireRole('seller', 'admin'), (req, res) => {
+router.delete('/:id', authenticate, requireRole('buyer', 'seller', 'admin'), (req, res) => {
   const row = getPropertyRow.get(req.params.id);
   if (!row) throw new HttpError(404, 'Property not found');
   if (req.user.role !== 'admin' && row.seller_id !== req.user.id)

@@ -10,8 +10,7 @@ verification, listing approval, and an immutable audit trail).
 ## 1. Roles & capabilities
 | Role | Can do |
 |------|--------|
-| **Buyer** | Browse/filter approved listings, express interest, request viewings, track everything on a personal dashboard, submit KYC |
-| **Seller** | Create/edit/delete listings (KYC-gated), manage buyer leads, confirm viewings, mark sold, submit KYC |
+| **Buyer and seller** | Every regular account can browse/filter approved listings, express interest, request viewings, create/manage its own listings (KYC-gated), manage leads, and submit KYC. The registration choice sets the initial dashboard only. |
 | **Admin (platform owner)** | Dashboard metrics, approve/reject listings, verify/reject KYC, activate/deactivate users, view all appointments, read the audit log |
 ## 2. Compliance features
 1. **KYC verification** — buyers/sellers upload ID documents; admin reviews. Sellers **cannot publish** a listing until `kyc_status = verified` (`requireKyc` middleware).
@@ -102,22 +101,22 @@ propflow/
 |--------|------|------|-------------|
 | GET | `/properties` | optional | Search w/ filters: `q,type,listing,city,state,minPrice,maxPrice,bedrooms,sort,page,limit`; `mine=1` for a seller's own; `status=` for admin/owner |
 | GET | `/properties/:id` | optional | Single listing (non-approved only visible to owner/admin) |
-| POST | `/properties` | seller + KYC | Create (enters `pending`; `saveDraft:true` for draft) |
-| PUT | `/properties/:id` | seller/admin | Update (seller edits re-enter review) |
-| PATCH | `/properties/:id/sold` | seller/admin | Mark sold |
-| DELETE | `/properties/:id` | seller/admin | Delete |
+| POST | `/properties` | user + KYC | Create (enters `pending`; `saveDraft:true` for draft) |
+| PUT | `/properties/:id` | owner/admin | Update (owner edits re-enter review) |
+| PATCH | `/properties/:id/sold` | owner/admin | Mark sold |
+| DELETE | `/properties/:id` | owner/admin | Delete |
 ### Interests (leads)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/interests` | buyer | Express interest |
-| GET | `/interests/mine` | buyer | Buyer's tracked interests |
-| GET | `/interests/received` | seller | Leads on the seller's listings |
-| PATCH | `/interests/:id/status` | seller/buyer | Seller updates lead; buyer can `withdrawn` |
+| POST | `/interests` | user | Express interest |
+| GET | `/interests/mine` | user | Buyer's tracked interests |
+| GET | `/interests/received` | user | Leads on the user's listings |
+| PATCH | `/interests/:id/status` | participant | Listing owner updates lead; interested user can withdraw |
 ### Appointments (viewings)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/appointments` | buyer | Request a viewing |
-| GET | `/appointments/mine` | token | Role-aware list |
+| POST | `/appointments` | user | Request a viewing |
+| GET | `/appointments/mine` | token | View appointments (optional `?view=buyer` or `?view=seller`) |
 | PATCH | `/appointments/:id/status` | participant/admin | requested→confirmed→completed / cancelled |
 ### Compliance
 | Method | Path | Auth | Description |

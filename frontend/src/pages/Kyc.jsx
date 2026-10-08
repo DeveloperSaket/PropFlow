@@ -36,7 +36,7 @@ export default function Kyc() {
       <h1 className="page-title">Compliance &amp; KYC</h1>
       <p className="subtle">
         Verify your identity to unlock full platform features
-        {user?.role === 'seller' ? ' (required before listing a property).' : '.'}
+        {user?.role !== 'admin' ? ' (required before listing a property).' : '.'}
       </p>
       <div className="card flex between mb-18">
         <span>Current KYC status</span>
