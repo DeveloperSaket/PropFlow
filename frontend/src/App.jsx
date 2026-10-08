@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, NavLink, Link, useNavigate } from 'react-route
 import { useAuth } from './context/AuthContext.jsx';
 import { Spinner } from './components/ui.jsx';
 import { db } from './firebase/index.js';
-import { getUnreadChatCount, listenToBuyerChatRooms } from './firebase/chat.js';
+import { getUnreadChatCount, listenToBuyerChatRooms, listenToSellerChatRooms } from './firebase/chat.js';
 import Home from './pages/Home.jsx';
 import Browse from './pages/Browse.jsx';
 import PropertyDetail from './pages/PropertyDetail.jsx';
@@ -11,6 +11,7 @@ import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import BuyerDashboard from './pages/BuyerDashboard.jsx';
 import SellerDashboard from './pages/SellerDashboard.jsx';
+import Chats from './pages/Chats.jsx';
 import PropertyForm from './pages/PropertyForm.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import Kyc from './pages/Kyc.jsx';
@@ -32,9 +33,29 @@ function Navbar() {
     }
 
     try {
-      return listenToBuyerChatRooms(db, user.id, (rooms) => {
-        setUnreadChatCount(getUnreadChatCount(rooms, user.id));
-      }, () => setUnreadChatCount(0));
+      let buyerRooms = [];
+      let sellerRooms = [];
+      const updateUnreadCount = () => setUnreadChatCount(
+        getUnreadChatCount(buyerRooms, user.id) + getUnreadChatCount(sellerRooms, user.id),
+      );
+      const unsubscribeBuyer = listenToBuyerChatRooms(db, user.id, (rooms) => {
+        buyerRooms = rooms;
+        updateUnreadCount();
+      }, () => {
+        buyerRooms = [];
+        updateUnreadCount();
+      });
+      const unsubscribeSeller = listenToSellerChatRooms(db, user.id, (rooms) => {
+        sellerRooms = rooms;
+        updateUnreadCount();
+      }, () => {
+        sellerRooms = [];
+        updateUnreadCount();
+      });
+      return () => {
+        unsubscribeBuyer();
+        unsubscribeSeller();
+      };
     } catch {
       setUnreadChatCount(0);
       return undefined;
@@ -48,7 +69,7 @@ function Navbar() {
       {user && user.role !== 'admin' && <NavLink to="/buyer">Buying</NavLink>}
       {user && user.role !== 'admin' && <NavLink to="/seller" end>Selling</NavLink>}
       {user && user.role !== 'admin' && (
-        <NavLink to="/buyer?tab=chats">
+        <NavLink to="/chats">
           Chats{unreadChatCount > 0 && <span className="nav-unread" aria-label={`${unreadChatCount} unread chats`}>{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>}
         </NavLink>
       )}
@@ -85,6 +106,7 @@ export default function App() {
         <Route path="/kyc" element={<Protected roles={['buyer', 'seller']}><Kyc /></Protected>} />
         <Route path="/buyer" element={<Protected roles={['buyer', 'seller']}><BuyerDashboard /></Protected>} />
         <Route path="/seller" element={<Protected roles={['buyer', 'seller']}><SellerDashboard /></Protected>} />
+        <Route path="/chats" element={<Protected roles={['buyer', 'seller']}><Chats /></Protected>} />
         <Route path="/seller/new" element={<Protected roles={['buyer', 'seller']}><PropertyForm /></Protected>} />
         <Route path="/seller/edit/:id" element={<Protected roles={['buyer', 'seller']}><PropertyForm /></Protected>} />
         <Route path="/admin" element={<Protected roles={['admin']}><AdminDashboard /></Protected>} />
