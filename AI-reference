@@ -1,0 +1,36 @@
+I need you to act as an expert software engineer and build a real-time chat feature between a buyer and a seller using Firebase. 
+
+Please write clean, modular code and assume that the Firebase configuration/initialization will be added later. 
+
+Here are the requirements:
+
+### 1. Technology Stack
+* Frontend Framework: React
+* Firebase Services: Cloud Firestore (for real-time messages and chat rooms) and Firebase Auth (assume users are already authenticated).
+
+### 2. Database Schema (Firestore)
+Please design and write the code according to this structure:
+* `chat_rooms` collection:
+  * `id` (Auto-generated or custom string like `buyerId_sellerId_productId`)
+  * `buyer_id` (String)
+  * `seller_id` (String)
+  * `product_id` (String)
+  * `last_message` (String)
+  * `last_updated` (Timestamp)
+* `messages` subcollection (nested inside each chat room document):
+  * `id` (Auto-generated)
+  * `sender_id` (String)
+  * `text` (String)
+  * `timestamp` (Timestamp)
+
+### 3. Required Components/Functions
+Please provide the code for:
+1. **Initialize/Get Chat Room**: A function that checks if a chat room already exists for a specific buyer, seller, and product. If it exists, return it; if not, create a new one.
+2. **Send Message**: A function to add a new message to the `messages` subcollection and update the parent `chat_rooms` document's `last_message` and `last_updated` fields.
+3. **Listen to Messages**: A real-time listener using `onSnapshot` to stream messages for a specific chat room, ordered by timestamp ascending.
+4. **Chat UI Component**: A clean, responsive UI component that displays the message history (with distinct styles for messages sent by the current user vs. the other user) and an input field with a send button.
+
+### 4. Code Quality
+* Use modern best practices for the specified framework.
+* Ensure proper error handling (try/catch blocks) for all Firebase network calls.
+* Use a placeholder variable `currentUserId` for the logged-in user so I can hook it up to my auth state later.
