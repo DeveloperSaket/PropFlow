@@ -21,5 +21,5 @@ export function verifyToken(token) {
 export function publicUser(u) {
   if (!u) return null;
   const { password_hash, ...rest } = u;
-  return rest;
+  return { ...rest, is_agent: Boolean(rest.is_agent) };
 }

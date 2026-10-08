@@ -9,6 +9,7 @@
     "seed": "cd backend && npm run seed",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
+    "start": "npm run dev",
     "dev": "node scripts/dev.js",
     "build": "cd frontend && npm run build"
   }
