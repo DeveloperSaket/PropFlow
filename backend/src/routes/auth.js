@@ -10,7 +10,6 @@ import { required, isEmail, oneOf, HttpError } from '../utils/validate.js';
 import { authenticate } from '../middleware/auth.js';
 import { audit } from '../utils/audit.js';
 import { createFirebaseCustomToken } from '../utils/firebase.js';
-import { checkAgentStatus } from '../utils/agentDetection.js';
 const router = Router();
 const findByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
 const insertUser = db.prepare(
@@ -39,11 +38,6 @@ router.post('/register', (req, res) => {
     new Date().toISOString()
   );
   const user = getById.get(info.lastInsertRowid);
-  if (req.body.allowAgentCheck === true) {
-    checkAgentStatus(user).catch((error) => {
-      console.warn(`[propflow] Agent detection failed for user ${user.id}: ${error.message}`);
-    });
-  }
   audit({
     actorId: user.id,
     action: 'user.register',
