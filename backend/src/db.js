@@ -18,6 +18,7 @@ export function initSchema() {
       email         TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       phone         TEXT,
+      is_agent      INTEGER NOT NULL DEFAULT 0 CHECK (is_agent IN (0, 1)),
       kyc_status    TEXT NOT NULL DEFAULT 'unverified'
                       CHECK (kyc_status IN ('unverified','pending','verified','rejected')),
       terms_accepted_at TEXT,
@@ -104,4 +105,9 @@ export function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_appointments_seller ON appointments(seller_id);
     CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_logs(actor_id);
   `);
+
+  const userColumns = db.prepare('PRAGMA table_info(users)').all();
+  if (!userColumns.some((column) => column.name === 'is_agent')) {
+    db.exec('ALTER TABLE users ADD COLUMN is_agent INTEGER NOT NULL DEFAULT 0 CHECK (is_agent IN (0, 1))');
+  }
 }

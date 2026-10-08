@@ -10,6 +10,12 @@ export const config = {
     ? path.resolve(process.env.DB_PATH)
     : path.join(__dirname, '..', 'data', 'propflow.db'),
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  agentDetection: {
+    url: process.env.AGENT_DETECTION_URL || '',
+    apiKey: process.env.AGENT_DETECTION_API_KEY || '',
+    market: process.env.AGENT_DETECTION_MARKET || 'Canada',
+    timeoutMs: Number(process.env.AGENT_DETECTION_TIMEOUT_MS || 8000),
+  },
   firebaseProjectId: process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || '',
   uploadDir: path.join(__dirname, '..', 'uploads'),
   admin: {

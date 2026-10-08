@@ -57,7 +57,10 @@ function Navbar() {
       <span className="spacer" />
       {user ? (
         <>
-          <span className="pill">{user.name} · {user.role === 'admin' ? 'Admin' : 'Buyer & Seller'}</span>
+          <span className="pill">
+            {user.name} · {user.role === 'admin' ? 'Admin' : 'Buyer & Seller'}
+            {user.is_agent && ' · Agent'}
+          </span>
           <a onClick={doLogout} className="cursor-pointer">Logout</a>
         </>
       ) : (

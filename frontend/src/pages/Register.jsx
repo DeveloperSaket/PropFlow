@@ -7,6 +7,7 @@ export default function Register() {
   const nav = useNavigate();
   const [form, setForm] = useState({
     role: 'buyer', name: '', email: '', phone: '', password: '', acceptTerms: false,
+    allowAgentCheck: false,
   });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -45,6 +46,15 @@ export default function Register() {
         <div className="field">
           <label>Phone</label>
           <input value={form.phone} onChange={set('phone')} placeholder="Optional" />
+        </div>
+        <p className="muted font-size-13">
+          An optional agent check may send your name, email, and phone to a third-party service for the Canadian market.
+        </p>
+        <div className="field flex gap-8">
+          <input type="checkbox" className="w-auto" checked={form.allowAgentCheck} onChange={set('allowAgentCheck')} id="agent-check" />
+          <label htmlFor="agent-check" className="m-0">
+            I consent to this information being shared for agent verification. I can still create an account without this check.
+          </label>
         </div>
         <div className="field">
           <label>Password</label>

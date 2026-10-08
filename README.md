@@ -54,6 +54,9 @@ ADMIN_PASSWORD=Admin@12345
 ```
 An admin account is auto-created on first boot if none exists.
 
+### Agent classification
+Agent classification is optional and runs asynchronously after registration when the user opts in. Configure `AGENT_DETECTION_URL` to enable it. The server sends a POST request containing `{ "market": "Canada", "user": { "id", "name", "email", "phone" } }`; the provider must return `{ "is_agent": true|false }`. An optional bearer credential can be set with `AGENT_DETECTION_API_KEY`, and `AGENT_DETECTION_TIMEOUT_MS` controls the request timeout. The result is stored in `users.is_agent` and returned as a boolean in user API responses. Existing users migrate with `is_agent = false`. Without user consent, a configured URL, or a valid provider response, signup is unaffected and the flag remains false.
+
 ### Firebase chat setup
 1. In Firebase Console, enable **Authentication** and create the **Cloud Firestore** database.
 2. Add the Firebase web app settings to `frontend/.env.local` using the `VITE_FIREBASE_*` names. Never put a service-account key in frontend files.
