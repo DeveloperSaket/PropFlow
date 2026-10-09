@@ -20,30 +20,6 @@ body {
 a { color: var(--brand); text-decoration: none; }
 a:hover { text-decoration: underline; }
 /* Layout */
-.nav {
-  background: var(--bg);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 0 22px;
-  height: 58px;
-  position: sticky;
-  top: 0;
-  z-index: 30;
-}
-.nav .brand { font-weight: 800; font-size: 20px; color: #fff; }
-.nav .brand span { color: #60a5fa; }
-.nav a { color: #cbd5e1; font-size: 14px; }
-.nav a.active, .nav a:hover { color: #fff; text-decoration: none; }
-.nav-menu { display: flex; align-items: center; gap: 18px; flex: 1; min-width: 0; }
-.nav-links, .nav-actions { display: flex; align-items: center; gap: 18px; }
-.nav .spacer { flex: 1; }
-.nav-menu-toggle { display: none; }
-.nav .pill {
-  background: #1e293b; padding: 4px 10px; border-radius: 999px; font-size: 12px;
-  color: #93c5fd;
-}
 .container { max-width: 1120px; margin: 0 auto; padding: 24px 22px; }
 /* Buttons */
 .btn {
@@ -149,27 +125,6 @@ input:focus, select:focus, textarea:focus { outline: 2px solid #bfdbfe; border-c
   .property-filter-fields, .property-filter-options { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .property-filter-search, .property-filter-price, .property-filter-actions { grid-column: 1 / -1; }
   .property-filter-actions .btn { flex: 1; }
-  .nav { justify-content: space-between; padding: 0 16px; }
-  .nav-menu-toggle {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 5px;
-    width: 40px;
-    height: 40px;
-    padding: 8px;
-    border: 1px solid #475569;
-    border-radius: 6px;
-    background: transparent;
-    cursor: pointer;
-  }
-  .nav-menu-toggle span { width: 100%; height: 2px; background: #fff; }
-  .nav-menu { display: none; position: absolute; top: 58px; left: 0; right: 0; align-items: stretch; gap: 0; padding: 8px 16px 14px; background: var(--bg); box-shadow: 0 8px 14px rgba(15, 23, 42, .2); }
-  .nav-menu.open { display: flex; flex-direction: column; }
-  .nav-links, .nav-actions { align-items: stretch; flex-direction: column; gap: 0; }
-  .nav-links a, .nav-actions a { display: block; padding: 11px 2px; }
-  .nav .spacer { display: none; }
-  .nav .pill { max-width: 100%; overflow-wrap: anywhere; margin: 8px 0 4px; }
 }
 /* Badges */
 .badge {
@@ -231,4 +186,3 @@ th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spa
   .chat-message { max-width: 88%; }
   .seller-chat-inline { right: 12px; bottom: 12px; width: calc(100vw - 24px); }
 }
-.nav .nav-unread { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; }
