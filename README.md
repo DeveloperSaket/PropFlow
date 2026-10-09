@@ -25,7 +25,7 @@ Requires **Node 22+** (uses the built-in `node:sqlite`).
 # from the repo root
 npm run install:all     # installs backend + frontend deps
 npm run seed            # creates the DB, an admin, and demo data
-npm run dev             # runs backend (:4000) and frontend (:5173) together
+npm run dev             # runs backend (:5005) and frontend (:5173) together
 ```
 Then open **http://localhost:5173**.
 > Run servers separately if you prefer:
@@ -41,7 +41,7 @@ The login screen has one-click buttons to autofill these.
 ## 4. Configuration
 Copy `backend/.env.example` to `backend/.env` and adjust:
 ```
-PORT=4000
+PORT=5005
 JWT_SECRET=<long random string>
 JWT_EXPIRES_IN=7d
 DB_PATH=./data/propflow.db
