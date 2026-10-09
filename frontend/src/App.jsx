@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Routes, Route, Navigate, NavLink, Link, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import { Spinner } from './components/ui.jsx';
-import { db } from './firebase/index.js';
-import { getUnreadChatCount, listenToBuyerChatRooms, listenToSellerChatRooms } from './firebase/chat.js';
+import Navbar from './components/Navbar.jsx';
 import Home from './pages/Home.jsx';
 import Browse from './pages/Browse.jsx';
 import PropertyDetail from './pages/PropertyDetail.jsx';
@@ -21,77 +19,6 @@ function Protected({ children, roles }) {
   if (!user) return <Navigate to="/login" replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
   return children;
-}
-function Navbar() {
-  const { user, logout } = useAuth();
-  const nav = useNavigate();
-  const [unreadChatCount, setUnreadChatCount] = useState(0);
-  useEffect(() => {
-    if (!user || user.role === 'admin') {
-      setUnreadChatCount(0);
-      return undefined;
-    }
-
-    try {
-      let buyerRooms = [];
-      let sellerRooms = [];
-      const updateUnreadCount = () => setUnreadChatCount(
-        getUnreadChatCount(buyerRooms, user.id) + getUnreadChatCount(sellerRooms, user.id),
-      );
-      const unsubscribeBuyer = listenToBuyerChatRooms(db, user.id, (rooms) => {
-        buyerRooms = rooms;
-        updateUnreadCount();
-      }, () => {
-        buyerRooms = [];
-        updateUnreadCount();
-      });
-      const unsubscribeSeller = listenToSellerChatRooms(db, user.id, (rooms) => {
-        sellerRooms = rooms;
-        updateUnreadCount();
-      }, () => {
-        sellerRooms = [];
-        updateUnreadCount();
-      });
-      return () => {
-        unsubscribeBuyer();
-        unsubscribeSeller();
-      };
-    } catch {
-      setUnreadChatCount(0);
-      return undefined;
-    }
-  }, [user?.id, user?.role]);
-  const doLogout = () => { logout(); nav('/'); };
-  return (
-    <nav className="nav">
-      <Link to="/" className="brand">Prop<span>Flow</span></Link>
-      <NavLink to="/browse">Browse</NavLink>
-      {user && user.role !== 'admin' && <NavLink to="/buyer">Buying</NavLink>}
-      {user && user.role !== 'admin' && <NavLink to="/seller" end>Selling</NavLink>}
-      {user && user.role !== 'admin' && (
-        <NavLink to="/chats">
-          Chats{unreadChatCount > 0 && <span className="nav-unread" aria-label={`${unreadChatCount} unread chats`}>{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>}
-        </NavLink>
-      )}
-      {user?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
-      {user && user.role !== 'admin' && <NavLink to="/kyc">Compliance</NavLink>}
-      <span className="spacer" />
-      {user ? (
-        <>
-          <span className="pill">
-            {user.name} · {user.role === 'admin' ? 'Admin' : 'Buyer & Seller'}
-            {user.is_agent && ' · Agent'}
-          </span>
-          <a onClick={doLogout} className="cursor-pointer">Logout</a>
-        </>
-      ) : (
-        <>
-          <NavLink to="/login">Login</NavLink>
-          <Link to="/register" className="btn small">Sign up</Link>
-        </>
-      )}
-    </nav>
-  );
 }
 export default function App() {
   return (
