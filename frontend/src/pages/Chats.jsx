@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { Spinner } from '../components/ui.jsx';
 import Chat from '../components/Chat/index.jsx';
+import ChatConversationCard from '../components/ChatConversationCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { db } from '../firebase/index.js';
 import {
@@ -169,7 +170,7 @@ export default function Chats() {
             : 'No seller conversations yet. Conversations appear here when buyers contact you about a listing.'}
         </p>
       ) : (
-        <div className="table-wrap card p-0">
+        <div className="table-wrap card p-0 chat-table-desktop">
           <table>
             <thead><tr><th>Property</th><th>{view === 'buyer' ? 'Seller' : 'Buyer'}</th><th>Last message</th><th>Updated</th><th>Status</th><th></th></tr></thead>
             <tbody>
@@ -192,6 +193,20 @@ export default function Chats() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+      {!roomsLoading && items.length > 0 && (
+        <div className="chat-conversation-list">
+          {items.map((item) => (
+            <ChatConversationCard
+              key={item.key}
+              item={item}
+              view={view}
+              unread={item.room ? getUnreadChatCount([item.room], user.id) > 0 : false}
+              active={activeChatKey === item.key}
+              onToggle={() => setActiveChatKey(activeChatKey === item.key ? null : item.key)}
+            />
+          ))}
         </div>
       )}
       {activeChat && (
