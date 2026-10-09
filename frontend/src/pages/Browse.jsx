@@ -1,16 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import PropertyCard from '../components/PropertyCard.jsx';
+import PropertyFilters, { PRICE_RANGES } from '../components/PropertyFilters.jsx';
 import { Spinner } from '../components/ui.jsx';
-
-const PRICE_RANGES = [
-  { value: '', label: 'Any' },
-  { value: '0-500000', label: '$0 – $500K', min: 0, max: 500000 },
-  { value: '500000-1000000', label: '$500K – $1M', min: 500000, max: 1000000 },
-  { value: '1000000-2000000', label: '$1M – $2M', min: 1000000, max: 2000000 },
-  { value: '2000000-5000000', label: '$2M – $5M', min: 2000000, max: 5000000 },
-  { value: '5000000-99999999', label: '$5M+', min: 5000000, max: 99999999 },
-];
 
 const empty = {
   q: '', type: '', listing: '', city: '', priceRange: '', bedrooms: '', sort: 'newest',
@@ -26,7 +18,7 @@ export default function Browse() {
     const params = new URLSearchParams({ page: pg, limit: 9 });
     const selectedRange = PRICE_RANGES.find((range) => range.value === filters.priceRange);
 
-    if (selectedRange && selectedRange.min !== undefined && selectedRange.min !== '') {
+    if (selectedRange && selectedRange.min !== undefined) {
       params.set('minPrice', String(selectedRange.min));
     }
     if (selectedRange && selectedRange.max !== undefined && selectedRange.max !== '') {
@@ -44,7 +36,7 @@ export default function Browse() {
   useEffect(() => { load(1); setPage(1); /* eslint-disable-next-line */ }, []);
 
   const apply = (e) => { e.preventDefault(); setPage(1); load(1); };
-  const set = (k) => (e) => setFilters((f) => ({ ...f, [k]: e.target.value }));
+  const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
   const reset = () => { setFilters(empty); setTimeout(() => load(1), 0); };
   const go = (pg) => { setPage(pg); load(pg); window.scrollTo(0, 0); };
 
@@ -52,70 +44,7 @@ export default function Browse() {
     <div className="container">
       <h1 className="page-title">Browse properties</h1>
       <p className="subtle">Filter by type, location, price and more.</p>
-      <form className="card mb-20" onSubmit={apply}>
-        <div className="row wrap flex-wrap">
-          <div className="flex-grow-2-min-200">
-            <label>Search</label>
-            <input value={filters.q} onChange={set('q')} placeholder="Title, address…" />
-          </div>
-          <div>
-            <label>Type</label>
-            <select value={filters.type} onChange={set('type')}>
-              <option value="">Any</option>
-              <option value="apartment">Apartment</option>
-              <option value="house">House</option>
-              <option value="villa">Villa</option>
-              <option value="plot">Plot</option>
-              <option value="commercial">Commercial</option>
-            </select>
-          </div>
-          <div>
-            <label>For</label>
-            <select value={filters.listing} onChange={set('listing')}>
-              <option value="">Any</option>
-              <option value="sale">Sale</option>
-              <option value="rent">Rent</option>
-            </select>
-          </div>
-          <div>
-            <label>City</label>
-            <input value={filters.city} onChange={set('city')} placeholder="e.g. Pune" />
-          </div>
-        </div>
-        <div className="row wrap mt-12 flex-wrap">
-          <div className="flex-grow-2-min-220">
-            <label>Price range</label>
-            <div className="price-range-bar" aria-label="Price range selector">
-              {PRICE_RANGES.map((range) => (
-                <button
-                  key={range.value || 'any'}
-                  type="button"
-                  className={`price-range-option ${filters.priceRange === range.value ? 'active' : ''}`}
-                  onClick={() => setFilters((f) => ({ ...f, priceRange: range.value }))}
-                >
-                  {range.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label>Min beds</label>
-            <input type="number" value={filters.bedrooms} onChange={set('bedrooms')} />
-          </div>
-          <div>
-            <label>Sort</label>
-            <select value={filters.sort} onChange={set('sort')}>
-              <option value="newest">Newest</option>
-              <option value="price_asc">Price: low to high</option>
-              <option value="price_desc">Price: high to low</option>
-            </select>
-          </div>
-          <div className="flex-end-gap-8">
-            <button className="btn" type="submit">Apply</button>
-            <button className="btn secondary" type="button" onClick={reset}>Reset</button>
-          </div>
-        </div>
-      </form>
+      <PropertyFilters filters={filters} onFilterChange={setFilter} onApply={apply} onReset={reset} />
       {result === null ? (
         <Spinner />
       ) : result.data.length === 0 ? (
