@@ -34,8 +34,8 @@ Then open **http://localhost:5173**.
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | `admin@propflow.test` | `Admin@12345` |
-| Seller | `ravi@seller.test` | `Password@123` |
-| Buyer | `anita@buyer.test` | `Password@123` |
+| Seller | `agent@maplekey.test` | `Password@123` |
+| Buyer | `olivia@buyer.test` | `Password@123` |
 The login screen has one-click buttons to autofill these.
 ---
 ## 4. Configuration
@@ -158,5 +158,5 @@ propflow/
 
 
   admin : admin@propflow.test / Admin@12345
-  seller: ravi@seller.test / Password@123
-  buyer : anita@buyer.test / Password@123
+  seller: agent@maplekey.test / Password@123
+  buyer : olivia@buyer.test / Password@123

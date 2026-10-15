@@ -43,8 +43,8 @@ export default function Login() {
         <p className="muted font-size-13">Click to autofill, then press Log in:</p>
         <div className="flex wrap">
           <button className="btn small secondary" onClick={() => quick('admin@propflow.test')}>Admin</button>
-          <button className="btn small secondary" onClick={() => quick('ravi@seller.test')}>Seller</button>
-          <button className="btn small secondary" onClick={() => quick('anita@buyer.test')}>Buyer</button>
+          <button className="btn small secondary" onClick={() => quick('agent@maplekey.test')}>Seller</button>
+          <button className="btn small secondary" onClick={() => quick('olivia@buyer.test')}>Buyer</button>
         </div>
       </div>
     </div>

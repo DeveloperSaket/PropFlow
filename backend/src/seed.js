@@ -17,10 +17,10 @@ function user(role, name, email, phone, kyc = 'verified') {
   });
   return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
 }
-const seller1 = user('seller', 'Maple Key Realty', 'ravi@seller.test', '+1-416-555-0142');
-const seller2 = user('seller', 'Northline Property Group', 'metro@seller.test', '+1-604-555-0176');
-const buyer1 = user('buyer', 'Olivia Martin', 'anita@buyer.test', '+1-613-555-0108');
-user('buyer', 'Unverified Noah Chen', 'bob@buyer.test', '+1-780-555-0164', 'unverified');
+const seller1 = user('seller', 'Maple Key Realty', 'agent@maplekey.test', '+1-416-555-0142');
+const seller2 = user('seller', 'Northline Property Group', 'agent@northline.test', '+1-604-555-0176');
+const buyer1 = user('buyer', 'Olivia Martin', 'olivia@buyer.test', '+1-613-555-0108');
+user('buyer', 'Unverified Noah Chen', 'noah@buyer.test', '+1-780-555-0164', 'unverified');
 const insertProp = db.prepare(`
   INSERT INTO properties
     (seller_id, title, description, property_type, listing_type, price, area_sqft,
@@ -115,6 +115,6 @@ db.prepare(
   new Date(Date.now() + 3 * 864e5).toISOString(), 'Weekend visit preferred');
 console.log('[seed] done.');
 console.log('  admin : admin@propflow.test / Admin@12345');
-console.log('  seller: ravi@seller.test / Password@123');
-console.log('  buyer : anita@buyer.test / Password@123');
+console.log('  seller: agent@maplekey.test / Password@123');
+console.log('  buyer : olivia@buyer.test / Password@123');
 process.exit(0);
