@@ -10,7 +10,7 @@ const insertAppt = db.prepare(
    VALUES (?, ?, ?, ?, ?)`
 );
 // POST /api/appointments — buyer requests a property viewing
-router.post('/', authenticate, requireRole('buyer'), (req, res) => {
+router.post('/', authenticate, requireRole('buyer', 'seller'), (req, res) => {
   const { property_id, scheduled_at, notes } = req.body;
   required(req.body, ['property_id', 'scheduled_at']);
   const prop = getProperty.get(property_id);

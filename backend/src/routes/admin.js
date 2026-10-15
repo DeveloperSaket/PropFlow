@@ -24,8 +24,8 @@ router.get('/stats', (req, res) => {
   res.json({
     users: {
       total: one('SELECT COUNT(*) AS c FROM users'),
-      buyers: usersByRole.buyer || 0,
-      sellers: usersByRole.seller || 0,
+      members: (usersByRole.buyer || 0) + (usersByRole.seller || 0),
+      agents: one('SELECT COUNT(*) AS c FROM users WHERE is_agent = 1'),
       admins: usersByRole.admin || 0,
       pending_kyc: one("SELECT COUNT(*) AS c FROM users WHERE kyc_status='pending'"),
     },

@@ -7,7 +7,8 @@ console.log('[seed] seeding demo data...');
 const upsertUser = db.prepare(`
   INSERT INTO users (role, name, email, password_hash, phone, is_agent, kyc_status, terms_accepted_at)
   VALUES (@role, @name, @email, @password_hash, @phone, @is_agent, @kyc_status, datetime('now'))
-  ON CONFLICT(email) DO UPDATE SET name=excluded.name, phone=excluded.phone, is_agent=excluded.is_agent
+  ON CONFLICT(email) DO UPDATE SET role=excluded.role, name=excluded.name,
+    phone=excluded.phone, is_agent=excluded.is_agent
 `);
 function user(role, name, email, phone, kyc = 'verified', isAgent = false) {
   upsertUser.run({
@@ -18,8 +19,8 @@ function user(role, name, email, phone, kyc = 'verified', isAgent = false) {
   });
   return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
 }
-const seller1 = user('seller', 'Maple Key Realty', 'agent@maplekey.test', '+1-416-555-0142', 'verified', true);
-const seller2 = user('seller', 'Jordan Ellis', 'jordan@homeseller.test', '+1-604-555-0176');
+const seller1 = user('buyer', 'Maple Key Realty', 'agent@maplekey.test', '+1-416-555-0142', 'verified', true);
+const seller2 = user('buyer', 'Jordan Ellis', 'jordan@homeseller.test', '+1-604-555-0176');
 const buyer1 = user('buyer', 'Olivia Martin', 'olivia@buyer.test', '+1-613-555-0108');
 user('buyer', 'Unverified Noah Chen', 'noah@buyer.test', '+1-780-555-0164', 'unverified');
 const insertProp = db.prepare(`

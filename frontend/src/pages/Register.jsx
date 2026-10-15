@@ -6,7 +6,7 @@ export default function Register() {
   const { register } = useAuth();
   const nav = useNavigate();
   const [form, setForm] = useState({
-    role: 'buyer', name: '', email: '', phone: '', password: '', acceptTerms: false,
+    name: '', email: '', phone: '', password: '', acceptTerms: false,
   });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -17,23 +17,15 @@ export default function Register() {
     setErr(''); setBusy(true);
     try {
       const u = await register(form);
-      nav(u.role === 'seller' ? '/seller' : '/buyer');
+      nav('/buyer');
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   return (
     <div className="container max-width-480">
       <h1 className="page-title">Create your account</h1>
-      <p className="subtle">Choose an account for buying or listing property. Identified agents are flagged on their account.</p>
+      <p className="subtle">One account gives you access to both buying and listing properties.</p>
       <form className="card" onSubmit={submit}>
         <Alert type="error">{err}</Alert>
-        <div className="field">
-          <label>Start with</label>
-          <select value={form.role} onChange={set('role')}>
-            <option value="buyer">Buy / lease a property</option>
-            <option value="seller">List / sell my property</option>
-          </select>
-          <small className="muted">Choose the account type that matches what you want to do.</small>
-        </div>
         <div className="field">
           <label>Full name</label>
           <input value={form.name} onChange={set('name')} required />

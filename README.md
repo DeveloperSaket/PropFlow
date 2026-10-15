@@ -34,8 +34,8 @@ Then open **http://localhost:5173**.
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | `admin@propflow.test` | `Admin@12345` |
-| Seller | `agent@maplekey.test` | `Password@123` |
-| Buyer | `olivia@buyer.test` | `Password@123` |
+| Agent member | `agent@maplekey.test` | `Password@123` |
+| Member | `olivia@buyer.test` | `Password@123` |
 The login screen has one-click buttons to autofill these.
 ---
 ## 4. Configuration
@@ -55,7 +55,7 @@ ADMIN_PASSWORD=Admin@12345
 An admin account is auto-created on first boot if none exists.
 
 ### Agent classification
-Buyer and seller are account roles; agent status is a separate flag, not a role. Admins can flag an identified buyer or seller as an agent from the Users table. Agents keep the permissions of their underlying buyer or seller account.
+Regular accounts can both buy and list properties. Admin is a separate account type. Agent status is a separate flag that admins can apply to an identified member from the Users table.
 
 ### Firebase chat setup
 1. In Firebase Console, enable **Authentication** and create the **Cloud Firestore** database.

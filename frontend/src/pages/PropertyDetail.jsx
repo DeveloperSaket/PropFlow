@@ -74,7 +74,7 @@ export default function PropertyDetail() {
       <Alert type="error">{err}</Alert>
       <Alert type="success">{ok}</Alert>
       {/* Buyer actions */}
-      {p.status === 'approved' && (!user || user.role === 'buyer') && user?.id !== p.seller_id && (
+      {p.status === 'approved' && (!user || ['buyer', 'seller'].includes(user.role)) && user?.id !== p.seller_id && (
         <div className="grid cols-2 mt-20">
           <div className="card">
             <h3>Interested in this property?</h3>
@@ -94,7 +94,7 @@ export default function PropertyDetail() {
           </div>
           <div className="card">
             <h3>Book a viewing</h3>
-            {user?.role === 'buyer' ? (
+            {user && user.role !== 'admin' ? (
               <>
                 <div className="field">
                   <label>Preferred date & time</label>
@@ -119,7 +119,7 @@ export default function PropertyDetail() {
           )}
         </div>
       )}
-      {p.status === 'approved' && user?.role === 'buyer' && user.id !== p.seller_id && (
+      {p.status === 'approved' && user && user.role !== 'admin' && user.id !== p.seller_id && (
         <div className="mt-20">
           <Chat
             db={db}

@@ -12,7 +12,7 @@ const insertInterest = db.prepare(
     'INSERT INTO interests (property_id, buyer_id, message) VALUES (?, ?, ?)'
 );
 // POST /api/interests — buyer expresses interest in a property
-router.post('/', authenticate, requireRole('buyer'), (req, res) => {
+router.post('/', authenticate, requireRole('buyer', 'seller'), (req, res) => {
     const { property_id, message } = req.body;
     const prop = getProperty.get(property_id);
     if (!prop || prop.status !== 'approved')
@@ -34,7 +34,7 @@ router.post('/', authenticate, requireRole('buyer'), (req, res) => {
     });
 });
 // GET /api/interests/mine — buyer's tracked interests (dashboard)
-router.get('/mine', authenticate, requireRole('buyer'), (req, res) => {
+router.get('/mine', authenticate, requireRole('buyer', 'seller'), (req, res) => {
     const rows = db
         .prepare(
             `SELECT i.*, p.title, p.price, p.city, p.status AS property_status,
@@ -49,7 +49,7 @@ router.get('/mine', authenticate, requireRole('buyer'), (req, res) => {
     res.json({ data: rows });
 });
 // GET /api/interests/received — seller sees leads on their properties
-router.get('/received', authenticate, requireRole('seller'), (req, res) => {
+router.get('/received', authenticate, requireRole('buyer', 'seller'), (req, res) => {
     const rows = db
         .prepare(
             `SELECT i.*, p.title, p.city, p.price,

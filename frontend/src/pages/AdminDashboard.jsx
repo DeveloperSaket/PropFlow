@@ -49,8 +49,8 @@ export default function AdminDashboard() {
           <h3>Users</h3>
           <div className="grid cols-4 mb-18">
             <Stat num={stats.users.total} label="Total users" />
-            <Stat num={stats.users.buyers} label="Buyers" color="var(--brand)" />
-            <Stat num={stats.users.sellers} label="Sellers" color="var(--green)" />
+            <Stat num={stats.users.members} label="Member accounts" color="var(--brand)" />
+            <Stat num={stats.users.agents} label="Agents" color="var(--green)" />
             <Stat num={stats.users.pending_kyc} label="Pending KYC" color="var(--amber)" />
           </div>
           <h3>Properties</h3>
@@ -101,13 +101,13 @@ export default function AdminDashboard() {
       {tab === 'users' && (
         <div className="table-wrap card p-0">
           <table>
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Agent</th><th>KYC</th><th>Active</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Email</th><th>Account</th><th>Agent</th><th>KYC</th><th>Active</th><th>Actions</th></tr></thead>
             <tbody>
               {users.map((u) => (
                 <tr key={u.id}>
                   <td>{u.name}</td>
                   <td><small>{u.email}</small></td>
-                  <td><Badge value={u.role} /></td>
+                  <td><Badge value={u.role === 'admin' ? 'admin' : 'member'} /></td>
                   <td>{u.is_agent ? 'Yes' : 'No'}</td>
                   <td><Badge value={u.kyc_status} /></td>
                   <td>{u.active ? '✓' : '✗'}</td>

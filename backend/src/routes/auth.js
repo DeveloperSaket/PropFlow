@@ -6,7 +6,7 @@ import {
   signToken,
   publicUser,
 } from '../utils/auth.js';
-import { required, isEmail, oneOf, HttpError } from '../utils/validate.js';
+import { required, isEmail, HttpError } from '../utils/validate.js';
 import { authenticate } from '../middleware/auth.js';
 import { audit } from '../utils/audit.js';
 import { createFirebaseCustomToken } from '../utils/firebase.js';
@@ -19,9 +19,9 @@ const insertUser = db.prepare(
 const getById = db.prepare('SELECT * FROM users WHERE id = ?');
 // POST /api/auth/register
 router.post('/register', (req, res) => {
-  const { role, name, email, password, phone, acceptTerms } = req.body;
-  required(req.body, ['role', 'name', 'email', 'password']);
-  oneOf(role, ['buyer', 'seller'], 'role'); // admins are not self-registered
+  const { name, email, password, phone, acceptTerms } = req.body;
+  const role = 'buyer';
+  required(req.body, ['name', 'email', 'password']);
   if (!isEmail(email)) throw new HttpError(400, 'Invalid email address');
   if (String(password).length < 8)
     throw new HttpError(400, 'Password must be at least 8 characters');
