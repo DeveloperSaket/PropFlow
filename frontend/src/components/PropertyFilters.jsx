@@ -36,7 +36,7 @@ export default function PropertyFilters({ filters, onFilterChange, onApply, onRe
         </div>
         <div>
           <label htmlFor="property-city">City</label>
-          <input id="property-city" value={filters.city} onChange={set('city')} placeholder="e.g. Pune" />
+          <input id="property-city" value={filters.city} onChange={set('city')} placeholder="e.g. Toronto" />
         </div>
       </div>
       <div className="property-filter-options">

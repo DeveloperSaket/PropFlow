@@ -39,7 +39,7 @@ export function initSchema() {
       address       TEXT,
       city          TEXT,
       state         TEXT,
-      country       TEXT DEFAULT 'India',
+      country       TEXT DEFAULT 'Canada',
       pincode       TEXT,
       status        TEXT NOT NULL DEFAULT 'pending'
                       CHECK (status IN ('draft','pending','approved','rejected','sold')),
@@ -112,7 +112,7 @@ export function initSchema() {
   }
 
   const propertyTable = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'properties'").get();
-  if (!propertyTable.sql.includes("'detached'")) {
+  if (!propertyTable.sql.includes("'detached'") || propertyTable.sql.includes("DEFAULT 'India'")) {
     db.exec('PRAGMA foreign_keys = OFF');
     try {
       db.exec(`
@@ -131,7 +131,7 @@ export function initSchema() {
           address       TEXT,
           city          TEXT,
           state         TEXT,
-          country       TEXT DEFAULT 'India',
+          country       TEXT DEFAULT 'Canada',
           pincode       TEXT,
           status        TEXT NOT NULL DEFAULT 'pending'
                           CHECK (status IN ('draft','pending','approved','rejected','sold')),

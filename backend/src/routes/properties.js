@@ -190,7 +190,7 @@ router.post('/', authenticate, requireRole('buyer', 'seller'), requireKyc, (req,
     address: b.address || null,
     city: b.city || null,
     state: b.state || null,
-    country: b.country || 'India',
+    country: b.country || 'Canada',
     pincode: b.pincode || null,
     status,
   });

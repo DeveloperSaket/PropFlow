@@ -7,7 +7,7 @@ console.log('[seed] seeding demo data...');
 const upsertUser = db.prepare(`
   INSERT INTO users (role, name, email, password_hash, phone, kyc_status, terms_accepted_at)
   VALUES (@role, @name, @email, @password_hash, @phone, @kyc_status, datetime('now'))
-  ON CONFLICT(email) DO UPDATE SET name=excluded.name
+  ON CONFLICT(email) DO UPDATE SET name=excluded.name, phone=excluded.phone
 `);
 function user(role, name, email, phone, kyc = 'verified') {
   upsertUser.run({
@@ -17,61 +17,85 @@ function user(role, name, email, phone, kyc = 'verified') {
   });
   return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
 }
-const seller1 = user('seller', 'Ravi Estates', 'ravi@seller.test', '9000000001');
-const seller2 = user('seller', 'Metro Homes', 'metro@seller.test', '9000000002');
-const buyer1 = user('buyer', 'Anita Buyer', 'anita@buyer.test', '9111111111');
-user('buyer', 'Unverified Bob', 'bob@buyer.test', '9222222222', 'unverified');
+const seller1 = user('seller', 'Maple Key Realty', 'ravi@seller.test', '+1-416-555-0142');
+const seller2 = user('seller', 'Northline Property Group', 'metro@seller.test', '+1-604-555-0176');
+const buyer1 = user('buyer', 'Olivia Martin', 'anita@buyer.test', '+1-613-555-0108');
+user('buyer', 'Unverified Noah Chen', 'bob@buyer.test', '+1-780-555-0164', 'unverified');
 const insertProp = db.prepare(`
   INSERT INTO properties
     (seller_id, title, description, property_type, listing_type, price, area_sqft,
-     bedrooms, bathrooms, address, city, state, pincode, status, featured)
+     bedrooms, bathrooms, address, city, state, country, pincode, status, featured)
   VALUES
     (@seller_id, @title, @description, @property_type, @listing_type, @price, @area_sqft,
-     @bedrooms, @bathrooms, @address, @city, @state, @pincode, @status, @featured)
+     @bedrooms, @bathrooms, @address, @city, @state, @country, @pincode, @status, @featured)
 `);
 const insertImg = db.prepare('INSERT INTO property_images (property_id, url) VALUES (?, ?)');
 // Clear demo properties to keep seed idempotent-ish
 db.prepare("DELETE FROM properties WHERE title LIKE '[DEMO]%'").run();
 const demo = [
   {
-    seller_id: seller1.id, title: '[DEMO] 3BHK Lake View Apartment',
-    description: 'Spacious 3BHK with lake view, modular kitchen, covered parking.',
-    property_type: 'apartment', listing_type: 'sale', price: 9500000, area_sqft: 1450,
-    bedrooms: 3, bathrooms: 3, address: '12 Lakeside Rd', city: 'Bengaluru',
-    state: 'Karnataka', pincode: '560037', status: 'approved', featured: 1,
+    seller_id: seller1.id, title: '[DEMO] Detached Home Near Lake Ontario',
+    description: 'Bright three-bedroom home with a renovated kitchen, deck, and attached garage.',
+    property_type: 'detached', listing_type: 'sale', price: 1249000, area_sqft: 1850,
+    bedrooms: 3, bathrooms: 3, address: '12 Lakeshore Avenue', city: 'Toronto',
+    state: 'Ontario', country: 'Canada', pincode: 'M5V 2T6', status: 'approved', featured: 1,
     img: 'https://picsum.photos/seed/prop1/800/500',
   },
   {
-    seller_id: seller1.id, title: '[DEMO] Independent Villa with Garden',
-    description: 'Luxury 4BHK villa, private garden, solar panels, gated community.',
-    property_type: 'villa', listing_type: 'sale', price: 21500000, area_sqft: 3200,
-    bedrooms: 4, bathrooms: 5, address: '9 Palm Grove', city: 'Pune',
-    state: 'Maharashtra', pincode: '411045', status: 'approved', featured: 0,
+    seller_id: seller1.id, title: '[DEMO] Semi-Detached Home in Montreal',
+    description: 'Well-kept three-bedroom home with a finished basement and private garden.',
+    property_type: 'semi_detached', listing_type: 'sale', price: 799000, area_sqft: 1700,
+    bedrooms: 3, bathrooms: 2, address: '44 Cedarvale Avenue', city: 'Montreal',
+    state: 'Quebec', country: 'Canada', pincode: 'H2Y 1C6', status: 'approved', featured: 0,
     img: 'https://picsum.photos/seed/prop2/800/500',
   },
   {
-    seller_id: seller2.id, title: '[DEMO] 2BHK Rental Near Metro',
-    description: 'Well-maintained 2BHK, 5 min walk to metro, semi-furnished.',
-    property_type: 'apartment', listing_type: 'rent', price: 28000, area_sqft: 980,
-    bedrooms: 2, bathrooms: 2, address: '44 Station Rd', city: 'Hyderabad',
-    state: 'Telangana', pincode: '500081', status: 'approved', featured: 0,
+    seller_id: seller2.id, title: '[DEMO] Freehold Townhouse in Calgary',
+    description: 'Three-bedroom townhouse with a finished basement, balcony, and two parking spaces.',
+    property_type: 'freehold_townhouse', listing_type: 'sale', price: 625000, area_sqft: 1800,
+    bedrooms: 3, bathrooms: 3, address: '88 Aspen Ridge Crescent', city: 'Calgary',
+    state: 'Alberta', country: 'Canada', pincode: 'T2P 1J9', status: 'approved', featured: 0,
     img: 'https://picsum.photos/seed/prop3/800/500',
   },
   {
-    seller_id: seller2.id, title: '[DEMO] Commercial Office Space',
-    description: 'Grade-A office, 2500 sqft, 10 parking slots, 24x7 security.',
-    property_type: 'commercial', listing_type: 'rent', price: 185000, area_sqft: 2500,
-    bedrooms: null, bathrooms: 2, address: 'Tower B, Tech Park', city: 'Gurugram',
-    state: 'Haryana', pincode: '122002', status: 'pending', featured: 0,
+    seller_id: seller2.id, title: '[DEMO] Condo Townhouse Near Downtown Ottawa',
+    description: 'Low-maintenance three-bedroom home with shared amenities and transit nearby.',
+    property_type: 'condo_townhouse', listing_type: 'sale', price: 589000, area_sqft: 1420,
+    bedrooms: 3, bathrooms: 2, address: '16 Wellington Street', city: 'Ottawa',
+    state: 'Ontario', country: 'Canada', pincode: 'K1Y 2C7', status: 'approved', featured: 0,
     img: 'https://picsum.photos/seed/prop4/800/500',
   },
   {
-    seller_id: seller1.id, title: '[DEMO] Residential Plot',
-    description: 'Corner plot, clear title, east-facing, ready to build.',
-    property_type: 'plot', listing_type: 'sale', price: 6200000, area_sqft: 2400,
-    bedrooms: null, bathrooms: null, address: 'Sector 5', city: 'Jaipur',
-    state: 'Rajasthan', pincode: '302020', status: 'pending', featured: 0,
+    seller_id: seller2.id, title: '[DEMO] Condo Apartment Steps from Vancouver Seawall',
+    description: 'Two-bedroom condo with in-suite laundry, balcony, and secure underground parking.',
+    property_type: 'condo_apt', listing_type: 'rent', price: 2850, area_sqft: 850,
+    bedrooms: 2, bathrooms: 2, address: '520 Pacific Boulevard', city: 'Vancouver',
+    state: 'British Columbia', country: 'Canada', pincode: 'V6B 1A1', status: 'approved', featured: 0,
     img: 'https://picsum.photos/seed/prop5/800/500',
+  },
+  {
+    seller_id: seller1.id, title: '[DEMO] Link Home in Markham',
+    description: 'Three-bedroom link home with a finished lower level and a fenced backyard.',
+    property_type: 'link', listing_type: 'sale', price: 998000, area_sqft: 1800,
+    bedrooms: 3, bathrooms: 3, address: '27 Willow Heights Boulevard', city: 'Markham',
+    state: 'Ontario', country: 'Canada', pincode: 'L3R 4G5', status: 'pending', featured: 0,
+    img: 'https://picsum.photos/seed/prop6/800/500',
+  },
+  {
+    seller_id: seller1.id, title: '[DEMO] Vacant Residential Lot in Kelowna',
+    description: 'Serviced residential lot in an established neighbourhood, ready for your plans.',
+    property_type: 'vacant_land', listing_type: 'sale', price: 475000, area_sqft: 5200,
+    bedrooms: null, bathrooms: null, address: '740 Glenmore Road', city: 'Kelowna',
+    state: 'British Columbia', country: 'Canada', pincode: 'V1Y 6H2', status: 'pending', featured: 0,
+    img: 'https://picsum.photos/seed/prop7/800/500',
+  },
+  {
+    seller_id: seller2.id, title: '[DEMO] Mixed-Use Commercial Space in Halifax',
+    description: 'Flexible street-level commercial space with office area and customer parking nearby.',
+    property_type: 'other', listing_type: 'rent', price: 4200, area_sqft: 2500,
+    bedrooms: null, bathrooms: 2, address: '105 Barrington Street', city: 'Halifax',
+    state: 'Nova Scotia', country: 'Canada', pincode: 'B3J 1S9', status: 'pending', featured: 0,
+    img: 'https://picsum.photos/seed/prop8/800/500',
   },
 ];
 for (const d of demo) {

@@ -63,7 +63,7 @@ export default function PropertyForm() {
       <form className="card" onSubmit={(e) => { e.preventDefault(); submit(false); }}>
         <div className="field">
           <label>Title *</label>
-          <input value={form.title} onChange={set('title')} required placeholder="e.g. 3BHK Apartment with Lake View" />
+          <input value={form.title} onChange={set('title')} required placeholder="e.g. 3-bedroom Condo with Lake View" />
         </div>
         <div className="field">
           <label>Description</label>
@@ -99,8 +99,8 @@ export default function PropertyForm() {
         <div className="field"><label>Address</label><input value={form.address} onChange={set('address')} /></div>
         <div className="row">
           <div className="field"><label>City</label><input value={form.city} onChange={set('city')} /></div>
-          <div className="field"><label>State</label><input value={form.state} onChange={set('state')} /></div>
-          <div className="field"><label>Pincode</label><input value={form.pincode} onChange={set('pincode')} /></div>
+          <div className="field"><label>Province</label><input value={form.state} onChange={set('state')} /></div>
+          <div className="field"><label>Postal code</label><input value={form.pincode} onChange={set('pincode')} /></div>
         </div>
         <div className="field">
           <label>Image URLs (comma-separated)</label>

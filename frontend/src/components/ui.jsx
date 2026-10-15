@@ -15,8 +15,11 @@ export function Stat({ num, label, color }) {
 }
 export function formatMoney(n) {
   if (n == null) return '—';
-  // Indian-style grouping
-  return '$' + Number(n).toLocaleString('en-IN');
+  return new Intl.NumberFormat('en-CA', {
+    style: 'currency',
+    currency: 'CAD',
+    maximumFractionDigits: 0,
+  }).format(Number(n));
 }
 export function Spinner({ label = 'Loading…' }) {
   return <p className="muted center" style={{ padding: 40 }}>{label}</p>;
