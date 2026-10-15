@@ -67,8 +67,8 @@ export default function Navbar() {
       <div id="primary-navigation" className={`nav-menu ${mobileMenuOpen ? 'open' : ''}`}>
         <div className="nav-links" onClick={() => setMobileMenuOpen(false)}>
           <NavLink to="/browse">Browse</NavLink>
-          {user && user.role !== 'admin' && <NavLink to="/buyer">Buying</NavLink>}
-          {user && user.role !== 'admin' && <NavLink to="/seller" end>Selling</NavLink>}
+          {user?.role === 'buyer' && <NavLink to="/buyer">Buying</NavLink>}
+          {user?.role === 'seller' && <NavLink to="/seller" end>Selling</NavLink>}
           {user && user.role !== 'admin' && (
             <NavLink to="/chats">
               Chats{unreadChatCount > 0 && <span className="nav-unread" aria-label={`${unreadChatCount} unread chats`}>{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>}
@@ -82,7 +82,7 @@ export default function Navbar() {
           {user ? (
             <>
               <span className="pill">
-                {user.name} · {user.role === 'admin' ? 'Admin' : 'Buyer & Seller'}
+                {user.name} · {user.role === 'admin' ? 'Admin' : user.role === 'seller' ? 'Seller' : 'Buyer'}
                 {user.is_agent && ' · Agent'}
               </span>
               <a onClick={doLogout} className="cursor-pointer">Logout</a>

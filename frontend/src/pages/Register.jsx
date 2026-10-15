@@ -23,7 +23,7 @@ export default function Register() {
   return (
     <div className="container max-width-480">
       <h1 className="page-title">Create your account</h1>
-      <p className="subtle">One account lets you buy, lease, and list properties.</p>
+      <p className="subtle">Choose an account for buying or listing property. Identified agents are flagged on their account.</p>
       <form className="card" onSubmit={submit}>
         <Alert type="error">{err}</Alert>
         <div className="field">
@@ -32,7 +32,7 @@ export default function Register() {
             <option value="buyer">Buy / lease a property</option>
             <option value="seller">List / sell my property</option>
           </select>
-          <small className="muted">You can use both buying and selling features with this account.</small>
+          <small className="muted">You can change your account type later by contacting support.</small>
         </div>
         <div className="field">
           <label>Full name</label>
