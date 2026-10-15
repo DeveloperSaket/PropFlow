@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { Alert } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { PROPERTY_TYPES } from '../constants/propertyTypes.js';
+import { getPropertyTypeLabel, PROPERTY_TYPES } from '../constants/propertyTypes.js';
 const blank = {
   title: '', description: '', property_type: 'detached', listing_type: 'sale',
   price: '', area_sqft: '', bedrooms: '', bathrooms: '',
@@ -73,6 +73,9 @@ export default function PropertyForm() {
           <div className="field">
             <label>Property type *</label>
             <select value={form.property_type} onChange={set('property_type')}>
+              {!PROPERTY_TYPES.some((type) => type.value === form.property_type) && (
+                <option value={form.property_type}>{getPropertyTypeLabel(form.property_type)} (existing)</option>
+              )}
               {PROPERTY_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
             </select>
           </div>
