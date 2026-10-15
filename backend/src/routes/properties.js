@@ -38,9 +38,13 @@ const getImages = db.prepare(
 const countInterests = db.prepare(
   'SELECT COUNT(*) AS c FROM interests WHERE property_id = ?'
 );
-function hydrate(row) {
+function hydrate(row, includePrivateDetails = true) {
   if (!row) return null;
   const images = getImages.all(row.id).map((r) => r.url);
+  if (!includePrivateDetails) {
+    const { address, pincode, ...publicRow } = row;
+    return { ...publicRow, images };
+  }
   const interest_count = countInterests.get(row.id).c;
   return { ...row, images, interest_count };
 }
@@ -142,7 +146,7 @@ router.get('/', optionalAuth, (req, res) => {
     )
     .all(params);
   res.json({
-    data: rows.map(hydrate),
+    data: rows.map((row) => hydrate(row, Boolean(req.user))),
     pagination: {
       page: pageNum,
       limit: pageSize,
@@ -164,7 +168,7 @@ router.get('/:id', optionalAuth, (req, res) => {
   if (!isOwner) {
     db.prepare('UPDATE properties SET views = views + 1 WHERE id = ?').run(row.id);
   }
-  res.json({ data: hydrate(getPropertyRow.get(req.params.id)) });
+  res.json({ data: hydrate(getPropertyRow.get(req.params.id), Boolean(req.user)) });
 });
 // POST /api/properties — seller creates a listing (requires KYC)
 router.post('/', authenticate, requireRole('member'), requireKyc, (req, res) => {
