@@ -32,7 +32,7 @@ export default function Register() {
             <option value="buyer">Buy / lease a property</option>
             <option value="seller">List / sell my property</option>
           </select>
-          <small className="muted">You can change your account type later by contacting support.</small>
+          <small className="muted">Choose the account type that matches what you want to do.</small>
         </div>
         <div className="field">
           <label>Full name</label>

@@ -55,7 +55,7 @@ ADMIN_PASSWORD=Admin@12345
 An admin account is auto-created on first boot if none exists.
 
 ### Agent classification
-Agent classification is not currently connected to an external provider. The `users.is_agent` flag defaults to false and is available for future use; agents can use the platform with the same buyer and seller capabilities as other users.
+Buyer and seller are account roles; agent status is a separate flag, not a role. Admins can flag an identified buyer or seller as an agent from the Users table. Agents keep the permissions of their underlying buyer or seller account.
 
 ### Firebase chat setup
 1. In Firebase Console, enable **Authentication** and create the **Cloud Firestore** database.
