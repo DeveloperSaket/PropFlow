@@ -19,10 +19,10 @@ function user(role, name, email, phone, kyc = 'verified', isAgent = false) {
   });
   return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
 }
-const seller1 = user('buyer', 'Maple Key Realty', 'agent@maplekey.test', '+1-416-555-0142', 'verified', true);
-const seller2 = user('buyer', 'Jordan Ellis', 'jordan@homeseller.test', '+1-604-555-0176');
-const buyer1 = user('buyer', 'Olivia Martin', 'olivia@buyer.test', '+1-613-555-0108');
-user('buyer', 'Unverified Noah Chen', 'noah@buyer.test', '+1-780-555-0164', 'unverified');
+const seller1 = user('member', 'Maple Key Realty', 'agent@maplekey.test', '+1-416-555-0142', 'verified', true);
+const seller2 = user('member', 'Jordan Ellis', 'jordan@homeseller.test', '+1-604-555-0176');
+const buyer1 = user('member', 'Olivia Martin', 'olivia@buyer.test', '+1-613-555-0108');
+user('member', 'Unverified Noah Chen', 'noah@buyer.test', '+1-780-555-0164', 'unverified');
 const insertProp = db.prepare(`
   INSERT INTO properties
     (seller_id, title, description, property_type, listing_type, price, area_sqft,

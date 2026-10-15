@@ -74,7 +74,7 @@ export default function PropertyDetail() {
       <Alert type="error">{err}</Alert>
       <Alert type="success">{ok}</Alert>
       {/* Buyer actions */}
-      {p.status === 'approved' && (!user || ['buyer', 'seller'].includes(user.role)) && user?.id !== p.seller_id && (
+      {p.status === 'approved' && (!user || user.role === 'member') && user?.id !== p.seller_id && (
         <div className="grid cols-2 mt-20">
           <div className="card">
             <h3>Interested in this property?</h3>

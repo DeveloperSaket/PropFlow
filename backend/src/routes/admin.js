@@ -24,7 +24,7 @@ router.get('/stats', (req, res) => {
   res.json({
     users: {
       total: one('SELECT COUNT(*) AS c FROM users'),
-      members: (usersByRole.buyer || 0) + (usersByRole.seller || 0),
+      members: usersByRole.member || 0,
       agents: one('SELECT COUNT(*) AS c FROM users WHERE is_agent = 1'),
       admins: usersByRole.admin || 0,
       pending_kyc: one("SELECT COUNT(*) AS c FROM users WHERE kyc_status='pending'"),
@@ -50,7 +50,7 @@ router.get('/users', (req, res) => {
   const where = [];
   const params = {};
   if (role) {
-    oneOf(role, ['buyer', 'seller', 'admin'], 'role');
+    oneOf(role, ['member', 'admin'], 'role');
     where.push('role = @role');
     params.role = role;
   }

@@ -13,7 +13,7 @@ export function initSchema() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      role          TEXT NOT NULL CHECK (role IN ('buyer','seller','admin')),
+      role          TEXT NOT NULL CHECK (role IN ('member','admin')),
       name          TEXT NOT NULL,
       email         TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
@@ -109,6 +109,43 @@ export function initSchema() {
   const userColumns = db.prepare('PRAGMA table_info(users)').all();
   if (!userColumns.some((column) => column.name === 'is_agent')) {
     db.exec('ALTER TABLE users ADD COLUMN is_agent INTEGER NOT NULL DEFAULT 0 CHECK (is_agent IN (0, 1))');
+  }
+
+  const userTable = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get();
+  if (!userTable.sql.includes("'member'") || userTable.sql.includes("'buyer'") || userTable.sql.includes("'seller'")) {
+    db.exec('PRAGMA foreign_keys = OFF');
+    try {
+      db.exec(`
+        BEGIN;
+        CREATE TABLE users_new (
+          id            INTEGER PRIMARY KEY AUTOINCREMENT,
+          role          TEXT NOT NULL CHECK (role IN ('member','admin')),
+          name          TEXT NOT NULL,
+          email         TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          phone         TEXT,
+          is_agent      INTEGER NOT NULL DEFAULT 0 CHECK (is_agent IN (0, 1)),
+          kyc_status    TEXT NOT NULL DEFAULT 'unverified'
+                          CHECK (kyc_status IN ('unverified','pending','verified','rejected')),
+          terms_accepted_at TEXT,
+          active        INTEGER NOT NULL DEFAULT 1,
+          created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        INSERT INTO users_new
+          SELECT id, CASE WHEN role IN ('buyer','seller') THEN 'member' ELSE role END,
+                 name, email, password_hash, phone, is_agent, kyc_status,
+                 terms_accepted_at, active, created_at
+          FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_new RENAME TO users;
+        COMMIT;
+      `);
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    } finally {
+      db.exec('PRAGMA foreign_keys = ON');
+    }
   }
 
   const propertyTable = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'properties'").get();

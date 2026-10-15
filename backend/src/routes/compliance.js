@@ -24,7 +24,7 @@ const upload = multer({
     cb(null, ALLOWED.includes(ext));
   },
 });
-// POST /api/compliance/kyc — upload a KYC document (buyer/seller)
+// POST /api/compliance/kyc — upload a KYC document (member)
 router.post('/kyc', authenticate, upload.single('document'), (req, res) => {
   required(req.body, ['doc_type']);
   if (!req.file)

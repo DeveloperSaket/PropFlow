@@ -20,7 +20,7 @@ const getById = db.prepare('SELECT * FROM users WHERE id = ?');
 // POST /api/auth/register
 router.post('/register', (req, res) => {
   const { name, email, password, phone, acceptTerms } = req.body;
-  const role = 'buyer';
+  const role = 'member';
   required(req.body, ['name', 'email', 'password']);
   if (!isEmail(email)) throw new HttpError(400, 'Invalid email address');
   if (String(password).length < 8)

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert } from '../components/ui.jsx';
-const dest = { buyer: '/buyer', seller: '/buyer', admin: '/admin' };
+const dest = { member: '/buyer', admin: '/admin' };
 export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
