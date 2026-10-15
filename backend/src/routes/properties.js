@@ -9,7 +9,11 @@ import {
 import { required, oneOf, toNumber, HttpError } from '../utils/validate.js';
 import { audit } from '../utils/audit.js';
 const router = Router();
-const PROPERTY_TYPES = ['apartment', 'house', 'plot', 'commercial', 'villa'];
+const PROPERTY_TYPES = [
+  'detached', 'semi_detached', 'freehold_townhouse', 'condo_townhouse',
+  'condo_apt', 'link', 'vacant_land', 'other',
+  'apartment', 'house', 'plot', 'commercial', 'villa',
+];
 const LISTING_TYPES = ['sale', 'rent'];
 const insertProperty = db.prepare(`
   INSERT INTO properties

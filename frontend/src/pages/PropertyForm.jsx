@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { Alert } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { PROPERTY_TYPES } from '../constants/propertyTypes.js';
 const blank = {
-  title: '', description: '', property_type: 'apartment', listing_type: 'sale',
+  title: '', description: '', property_type: 'detached', listing_type: 'sale',
   price: '', area_sqft: '', bedrooms: '', bathrooms: '',
   address: '', city: '', state: '', pincode: '', images: '',
 };
@@ -72,18 +73,14 @@ export default function PropertyForm() {
           <div className="field">
             <label>Property type *</label>
             <select value={form.property_type} onChange={set('property_type')}>
-              <option value="apartment">Apartment</option>
-              <option value="house">House</option>
-              <option value="villa">Villa</option>
-              <option value="plot">Plot</option>
-              <option value="commercial">Commercial</option>
+              {PROPERTY_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
             </select>
           </div>
           <div className="field">
             <label>Listing type *</label>
             <select value={form.listing_type} onChange={set('listing_type')}>
               <option value="sale">For sale</option>
-              <option value="rent">For rent</option>
+              <option value="rent">For lease</option>
             </select>
           </div>
           <div className="field">

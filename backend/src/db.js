@@ -30,7 +30,7 @@ export function initSchema() {
       seller_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       title         TEXT NOT NULL,
       description   TEXT,
-      property_type TEXT NOT NULL CHECK (property_type IN ('apartment','house','plot','commercial','villa')),
+      property_type TEXT NOT NULL CHECK (property_type IN ('detached','semi_detached','freehold_townhouse','condo_townhouse','condo_apt','link','vacant_land','other','apartment','house','plot','commercial','villa')),
       listing_type  TEXT NOT NULL CHECK (listing_type IN ('sale','rent')),
       price         REAL NOT NULL,
       area_sqft     REAL,
@@ -109,5 +109,51 @@ export function initSchema() {
   const userColumns = db.prepare('PRAGMA table_info(users)').all();
   if (!userColumns.some((column) => column.name === 'is_agent')) {
     db.exec('ALTER TABLE users ADD COLUMN is_agent INTEGER NOT NULL DEFAULT 0 CHECK (is_agent IN (0, 1))');
+  }
+
+  const propertyTable = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'properties'").get();
+  if (!propertyTable.sql.includes("'detached'")) {
+    db.exec('PRAGMA foreign_keys = OFF');
+    try {
+      db.exec(`
+        BEGIN;
+        CREATE TABLE properties_new (
+          id            INTEGER PRIMARY KEY AUTOINCREMENT,
+          seller_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title         TEXT NOT NULL,
+          description   TEXT,
+          property_type TEXT NOT NULL CHECK (property_type IN ('detached','semi_detached','freehold_townhouse','condo_townhouse','condo_apt','link','vacant_land','other','apartment','house','plot','commercial','villa')),
+          listing_type  TEXT NOT NULL CHECK (listing_type IN ('sale','rent')),
+          price         REAL NOT NULL,
+          area_sqft     REAL,
+          bedrooms      INTEGER,
+          bathrooms     INTEGER,
+          address       TEXT,
+          city          TEXT,
+          state         TEXT,
+          country       TEXT DEFAULT 'India',
+          pincode       TEXT,
+          status        TEXT NOT NULL DEFAULT 'pending'
+                          CHECK (status IN ('draft','pending','approved','rejected','sold')),
+          rejection_reason TEXT,
+          featured      INTEGER NOT NULL DEFAULT 0,
+          views         INTEGER NOT NULL DEFAULT 0,
+          created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        INSERT INTO properties_new SELECT * FROM properties;
+        DROP TABLE properties;
+        ALTER TABLE properties_new RENAME TO properties;
+        CREATE INDEX IF NOT EXISTS idx_properties_status ON properties(status);
+        CREATE INDEX IF NOT EXISTS idx_properties_seller ON properties(seller_id);
+        CREATE INDEX IF NOT EXISTS idx_properties_city ON properties(city);
+        COMMIT;
+      `);
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    } finally {
+      db.exec('PRAGMA foreign_keys = ON');
+    }
   }
 }
