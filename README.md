@@ -10,10 +10,10 @@ verification, listing approval, and an immutable audit trail).
 ## 1. Roles & capabilities
 | Role | Can do |
 |------|--------|
-| **Buyer and seller** | Every regular account can browse/filter approved listings, express interest, request viewings, create/manage its own listings (KYC-gated), manage leads, and submit KYC. The registration choice sets the initial dashboard only. |
+| **Member** | Every regular account can browse/filter approved listings, express interest, request viewings, create/manage its own listings (KYC-gated), manage leads, and submit KYC. |
 | **Admin (platform owner)** | Dashboard metrics, approve/reject listings, verify/reject KYC, activate/deactivate users, view all appointments, read the audit log |
 ## 2. Compliance features
-1. **KYC verification** — buyers/sellers upload ID documents; admin reviews. Sellers **cannot publish** a listing until `kyc_status = verified` (`requireKyc` middleware).
+1. **KYC verification** — members upload ID documents; admin reviews. Members **cannot publish** a listing until `kyc_status = verified` (`requireKyc` middleware).
 2. **Listing moderation** — every new/edited listing enters a `pending` queue and must be **approved** by an admin before it is publicly visible.
 3. **Audit trail** — registrations, logins, listing changes, approvals, KYC reviews, interests and appointments are written to `audit_logs` and surfaced in the admin UI.
 4. **Terms acceptance** — recorded at registration (`terms_accepted_at`).
@@ -34,8 +34,8 @@ Then open **http://localhost:5173**.
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | `admin@propflow.test` | `Admin@12345` |
-| Seller | `ravi@seller.test` | `Password@123` |
-| Buyer | `anita@buyer.test` | `Password@123` |
+| Agent member | `agent@maplekey.test` | `Password@123` |
+| Member | `olivia@buyer.test` | `Password@123` |
 The login screen has one-click buttons to autofill these.
 ---
 ## 4. Configuration
@@ -55,7 +55,7 @@ ADMIN_PASSWORD=Admin@12345
 An admin account is auto-created on first boot if none exists.
 
 ### Agent classification
-Agent classification is not currently connected to an external provider. The `users.is_agent` flag defaults to false and is available for future use; agents can use the platform with the same buyer and seller capabilities as other users.
+Regular accounts are stored as `member` and can both buy and list properties. Admin is a separate account type. Agent status is a separate flag that admins can apply to an identified member from the Users table.
 
 ### Firebase chat setup
 1. In Firebase Console, enable **Authentication** and create the **Cloud Firestore** database.
@@ -158,5 +158,5 @@ propflow/
 
 
   admin : admin@propflow.test / Admin@12345
-  seller: ravi@seller.test / Password@123
-  buyer : anita@buyer.test / Password@123
+  seller: agent@maplekey.test / Password@123
+  buyer : olivia@buyer.test / Password@123

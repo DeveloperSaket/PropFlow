@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert } from '../components/ui.jsx';
-const dest = { buyer: '/buyer', seller: '/seller', admin: '/admin' };
+const dest = { member: '/buyer', admin: '/admin' };
 export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
@@ -43,8 +43,8 @@ export default function Login() {
         <p className="muted font-size-13">Click to autofill, then press Log in:</p>
         <div className="flex wrap">
           <button className="btn small secondary" onClick={() => quick('admin@propflow.test')}>Admin</button>
-          <button className="btn small secondary" onClick={() => quick('ravi@seller.test')}>Seller</button>
-          <button className="btn small secondary" onClick={() => quick('anita@buyer.test')}>Buyer</button>
+          <button className="btn small secondary" onClick={() => quick('agent@maplekey.test')}>Agent account</button>
+          <button className="btn small secondary" onClick={() => quick('olivia@buyer.test')}>Member account</button>
         </div>
       </div>
     </div>

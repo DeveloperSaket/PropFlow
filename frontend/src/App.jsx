@@ -30,12 +30,12 @@ export default function App() {
         <Route path="/properties/:id" element={<PropertyDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/kyc" element={<Protected roles={['buyer', 'seller']}><Kyc /></Protected>} />
-        <Route path="/buyer" element={<Protected roles={['buyer', 'seller']}><BuyerDashboard /></Protected>} />
-        <Route path="/seller" element={<Protected roles={['buyer', 'seller']}><SellerDashboard /></Protected>} />
-        <Route path="/chats" element={<Protected roles={['buyer', 'seller']}><Chats /></Protected>} />
-        <Route path="/seller/new" element={<Protected roles={['buyer', 'seller']}><PropertyForm /></Protected>} />
-        <Route path="/seller/edit/:id" element={<Protected roles={['buyer', 'seller']}><PropertyForm /></Protected>} />
+        <Route path="/kyc" element={<Protected roles={['member']}><Kyc /></Protected>} />
+        <Route path="/buyer" element={<Protected roles={['member']}><BuyerDashboard /></Protected>} />
+        <Route path="/seller" element={<Protected roles={['member']}><SellerDashboard /></Protected>} />
+        <Route path="/chats" element={<Protected roles={['member']}><Chats /></Protected>} />
+        <Route path="/seller/new" element={<Protected roles={['member']}><PropertyForm /></Protected>} />
+        <Route path="/seller/edit/:id" element={<Protected roles={['member']}><PropertyForm /></Protected>} />
         <Route path="/admin" element={<Protected roles={['admin']}><AdminDashboard /></Protected>} />
         <Route path="*" element={<div className="container"><h2>404 — Page not found</h2><Link to="/">Go home</Link></div>} />
       </Routes>

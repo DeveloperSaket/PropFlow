@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { Alert } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { getPropertyTypeLabel, PROPERTY_TYPES } from '../constants/propertyTypes.js';
 const blank = {
-  title: '', description: '', property_type: 'apartment', listing_type: 'sale',
+  title: '', description: '', property_type: 'detached', listing_type: 'sale',
   price: '', area_sqft: '', bedrooms: '', bathrooms: '',
   address: '', city: '', state: '', pincode: '', images: '',
 };
@@ -62,7 +63,7 @@ export default function PropertyForm() {
       <form className="card" onSubmit={(e) => { e.preventDefault(); submit(false); }}>
         <div className="field">
           <label>Title *</label>
-          <input value={form.title} onChange={set('title')} required placeholder="e.g. 3BHK Apartment with Lake View" />
+          <input value={form.title} onChange={set('title')} required placeholder="e.g. 3-bedroom Condo with Lake View" />
         </div>
         <div className="field">
           <label>Description</label>
@@ -72,18 +73,17 @@ export default function PropertyForm() {
           <div className="field">
             <label>Property type *</label>
             <select value={form.property_type} onChange={set('property_type')}>
-              <option value="apartment">Apartment</option>
-              <option value="house">House</option>
-              <option value="villa">Villa</option>
-              <option value="plot">Plot</option>
-              <option value="commercial">Commercial</option>
+              {!PROPERTY_TYPES.some((type) => type.value === form.property_type) && (
+                <option value={form.property_type}>{getPropertyTypeLabel(form.property_type)} (existing)</option>
+              )}
+              {PROPERTY_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
             </select>
           </div>
           <div className="field">
             <label>Listing type *</label>
             <select value={form.listing_type} onChange={set('listing_type')}>
               <option value="sale">For sale</option>
-              <option value="rent">For rent</option>
+              <option value="rent">For lease</option>
             </select>
           </div>
           <div className="field">
@@ -99,8 +99,8 @@ export default function PropertyForm() {
         <div className="field"><label>Address</label><input value={form.address} onChange={set('address')} /></div>
         <div className="row">
           <div className="field"><label>City</label><input value={form.city} onChange={set('city')} /></div>
-          <div className="field"><label>State</label><input value={form.state} onChange={set('state')} /></div>
-          <div className="field"><label>Pincode</label><input value={form.pincode} onChange={set('pincode')} /></div>
+          <div className="field"><label>Province</label><input value={form.state} onChange={set('state')} /></div>
+          <div className="field"><label>Postal code</label><input value={form.pincode} onChange={set('pincode')} /></div>
         </div>
         <div className="field">
           <label>Image URLs (comma-separated)</label>

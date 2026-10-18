@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import PropertyCard from '../components/PropertyCard.jsx';
-import PropertyFilters, { PRICE_RANGES } from '../components/PropertyFilters.jsx';
+import PropertyFilters, { PRICE_MAX, PRICE_MIN } from '../components/PropertyFilters.jsx';
 import { Spinner } from '../components/ui.jsx';
 
 const empty = {
-  q: '', type: '', listing: '', city: '', priceRange: '', bedrooms: '', sort: 'newest',
+  q: '', type: '', listing: '', city: '', minPrice: PRICE_MIN, maxPrice: PRICE_MAX, bedrooms: '', sort: 'newest',
 };
 
 export default function Browse() {
@@ -13,20 +13,12 @@ export default function Browse() {
   const [result, setResult] = useState(null);
   const [page, setPage] = useState(1);
 
-  const load = (pg = 1) => {
+  const load = (pg = 1, activeFilters = filters) => {
     setResult(null);
     const params = new URLSearchParams({ page: pg, limit: 9 });
-    const selectedRange = PRICE_RANGES.find((range) => range.value === filters.priceRange);
 
-    if (selectedRange && selectedRange.min !== undefined) {
-      params.set('minPrice', String(selectedRange.min));
-    }
-    if (selectedRange && selectedRange.max !== undefined && selectedRange.max !== '') {
-      params.set('maxPrice', String(selectedRange.max));
-    }
-
-    Object.entries(filters).forEach(([k, v]) => {
-      if (k === 'priceRange' || v === '') return;
+    Object.entries(activeFilters).forEach(([k, v]) => {
+      if (v === '' || (k === 'minPrice' && v === PRICE_MIN) || (k === 'maxPrice' && v === PRICE_MAX)) return;
       params.set(k, v);
     });
 
@@ -37,7 +29,7 @@ export default function Browse() {
 
   const apply = (e) => { e.preventDefault(); setPage(1); load(1); };
   const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
-  const reset = () => { setFilters(empty); setTimeout(() => load(1), 0); };
+  const reset = () => { setFilters(empty); setPage(1); load(1, empty); };
   const go = (pg) => { setPage(pg); load(pg); window.scrollTo(0, 0); };
 
   return (

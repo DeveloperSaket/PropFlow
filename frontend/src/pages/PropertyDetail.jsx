@@ -5,6 +5,7 @@ import { Badge, Alert, Spinner, formatMoney } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Chat from '../components/Chat/index.jsx';
 import { db } from '../firebase/index.js';
+import { getPropertyTypeLabel } from '../constants/propertyTypes.js';
 export default function PropertyDetail() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -58,7 +59,7 @@ export default function PropertyDetail() {
           </div>
           <p className="muted">{p.address ? p.address + ', ' : ''}{p.city}{p.state ? `, ${p.state}` : ''} {p.pincode}</p>
           <div className="grid cols-4 my-14">
-            <div className="card stat"><div className="num font-size-18">{p.property_type}</div><div className="label">Type</div></div>
+            <div className="card stat"><div className="num font-size-18">{getPropertyTypeLabel(p.property_type)}</div><div className="label">Type</div></div>
             <div className="card stat"><div className="num font-size-18">{p.bedrooms ?? '—'}</div><div className="label">Beds</div></div>
             <div className="card stat"><div className="num font-size-18">{p.bathrooms ?? '—'}</div><div className="label">Baths</div></div>
             <div className="card stat"><div className="num font-size-18">{p.area_sqft ?? '—'}</div><div className="label">Sqft</div></div>
@@ -73,7 +74,7 @@ export default function PropertyDetail() {
       <Alert type="error">{err}</Alert>
       <Alert type="success">{ok}</Alert>
       {/* Buyer actions */}
-      {p.status === 'approved' && user?.id !== p.seller_id && (
+      {p.status === 'approved' && (!user || user.role === 'member') && user?.id !== p.seller_id && (
         <div className="grid cols-2 mt-20">
           <div className="card">
             <h3>Interested in this property?</h3>

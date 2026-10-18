@@ -82,7 +82,7 @@ export default function Navbar() {
           {user ? (
             <>
               <span className="pill">
-                {user.name} · {user.role === 'admin' ? 'Admin' : 'Buyer & Seller'}
+                {user.name} · {user.role === 'admin' ? 'Admin' : 'Account'}
                 {user.is_agent && ' · Agent'}
               </span>
               <a onClick={doLogout} className="cursor-pointer">Logout</a>
