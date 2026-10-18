@@ -5,11 +5,12 @@ export const PRICE_MIN = 0;
 export const PRICE_MAX = 50_000_000;
 export const PRICE_STEPS = [PRICE_MIN, 50_000, 1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000, PRICE_MAX];
 
-const formatPrice = (value) => new Intl.NumberFormat('en-CA', {
-  style: 'currency',
-  currency: 'CAD',
-  maximumFractionDigits: 0,
-}).format(Number.isFinite(Number(value)) ? Number(value) : 0);
+const formatPrice = (value) => {
+  const amount = Number.isFinite(Number(value)) ? Number(value) : 0;
+  if (amount >= 1_000_000) return `$${amount / 1_000_000}M`;
+  if (amount >= 1_000) return `$${amount / 1_000}K`;
+  return `$${amount}`;
+};
 
 export default function PropertyFilters({ filters, onFilterChange, onApply, onReset }) {
   const minPrice = Number.isFinite(Number(filters.minPrice)) ? Number(filters.minPrice) : PRICE_MIN;
