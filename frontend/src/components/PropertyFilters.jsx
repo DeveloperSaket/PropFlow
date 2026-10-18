@@ -2,7 +2,8 @@ import { PROPERTY_TYPES } from '../constants/propertyTypes.js';
 import Range from '../lib/range/index.jsx';
 
 export const PRICE_MIN = 0;
-export const PRICE_MAX = 100_000_000;
+export const PRICE_MAX = 50_000_000;
+export const PRICE_STEPS = [PRICE_MIN, 50_000, 1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000, PRICE_MAX];
 
 const formatPrice = (value) => new Intl.NumberFormat('en-CA', {
   style: 'currency',
@@ -53,13 +54,7 @@ export default function PropertyFilters({ filters, onFilterChange, onApply, onRe
             <span>{formatPrice(minPrice)}</span>
             <span>{maxPrice === PRICE_MAX ? `${formatPrice(maxPrice)}+` : formatPrice(maxPrice)}</span>
           </div>
-          <Range
-            min={PRICE_MIN}
-            max={PRICE_MAX}
-            valueMin={minPrice}
-            valueMax={maxPrice}
-            onChange={setPriceRange}
-          />
+          <Range values={PRICE_STEPS} valueMin={minPrice} valueMax={maxPrice} onChange={setPriceRange} />
         </div>
         <div>
           <label htmlFor="property-bedrooms">Min beds</label>

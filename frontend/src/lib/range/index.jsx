@@ -1,25 +1,22 @@
 import './range.scss';
 
-const Range = ({ min = 0, max = 100_000_000, valueMin, valueMax, onChange, step = 50_000_000 }) => {
-  const safeMin = Number.isFinite(Number(min)) ? Number(min) : 0;
-  const safeMax = Number.isFinite(Number(max)) && Number(max) > safeMin ? Number(max) : safeMin + step;
-  const safeStep = Math.min(step, safeMax - safeMin);
-  const lowerValue = Number.isFinite(Number(valueMin))
-    ? Math.min(Math.max(Number(valueMin), safeMin), safeMax - safeStep)
-    : safeMin;
-  const upperValue = Number.isFinite(Number(valueMax))
-    ? Math.min(Math.max(Number(valueMax), lowerValue + safeStep), safeMax)
-    : safeMax;
-  const range = safeMax - safeMin;
-  const lowerPosition = ((lowerValue - safeMin) / range) * 100;
-  const upperPosition = ((upperValue - safeMin) / range) * 100;
+const Range = ({ values, valueMin, valueMax, onChange }) => {
+  const validValues = values.filter((value) => Number.isFinite(Number(value))).map(Number);
+  const foundMinIndex = validValues.indexOf(Number(valueMin));
+  const foundMaxIndex = validValues.indexOf(Number(valueMax));
+  const lowerIndex = foundMinIndex >= 0 ? foundMinIndex : 0;
+  const upperIndex = foundMaxIndex > lowerIndex ? foundMaxIndex : validValues.length - 1;
+  const lowerPosition = (lowerIndex / (validValues.length - 1)) * 100;
+  const upperPosition = (upperIndex / (validValues.length - 1)) * 100;
 
   const updateMin = (event) => {
-    onChange(Math.min(Number(event.target.value), upperValue - safeStep), upperValue);
+    const index = Math.min(Number(event.target.value), upperIndex - 1);
+    onChange(validValues[index], validValues[upperIndex]);
   };
 
   const updateMax = (event) => {
-    onChange(lowerValue, Math.max(Number(event.target.value), lowerValue + safeStep));
+    const index = Math.max(Number(event.target.value), lowerIndex + 1);
+    onChange(validValues[lowerIndex], validValues[index]);
   };
 
   return (
@@ -29,20 +26,20 @@ const Range = ({ min = 0, max = 100_000_000, valueMin, valueMax, onChange, step 
       <input
         className="range-input range-input-min"
         type="range"
-        min={safeMin}
-        max={safeMax}
-        step={safeStep}
-        value={lowerValue}
+        min={0}
+        max={validValues.length - 1}
+        step={1}
+        value={lowerIndex}
         aria-label="Minimum price"
         onChange={updateMin}
       />
       <input
         className="range-input range-input-max"
         type="range"
-        min={safeMin}
-        max={safeMax}
-        step={safeStep}
-        value={upperValue}
+        min={0}
+        max={validValues.length - 1}
+        step={1}
+        value={upperIndex}
         aria-label="Maximum price"
         onChange={updateMax}
       />
