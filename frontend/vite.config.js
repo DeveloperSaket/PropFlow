@@ -6,8 +6,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       // Proxy API + uploads to the Express backend during development
-      '/api': 'http://localhost:4000',
-      '/uploads': 'http://localhost:4000',
+      '/api': 'http://localhost:5005',
+      '/uploads': 'http://localhost:5005',
     },
     css: {
       preprocessorOptions: {

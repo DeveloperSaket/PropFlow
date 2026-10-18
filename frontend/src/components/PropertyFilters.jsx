@@ -1,3 +1,5 @@
+import { PROPERTY_TYPES } from '../constants/propertyTypes.js';
+
 export const PRICE_RANGES = [
   { value: '', label: 'Any' },
   { value: '0-500000', label: '$0 – $500K', min: 0, max: 500000 },
@@ -21,11 +23,7 @@ export default function PropertyFilters({ filters, onFilterChange, onApply, onRe
           <label htmlFor="property-type">Type</label>
           <select id="property-type" value={filters.type} onChange={set('type')}>
             <option value="">Any</option>
-            <option value="apartment">Apartment</option>
-            <option value="house">House</option>
-            <option value="villa">Villa</option>
-            <option value="plot">Plot</option>
-            <option value="commercial">Commercial</option>
+            {PROPERTY_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
           </select>
         </div>
         <div>
@@ -33,12 +31,12 @@ export default function PropertyFilters({ filters, onFilterChange, onApply, onRe
           <select id="property-listing" value={filters.listing} onChange={set('listing')}>
             <option value="">Any</option>
             <option value="sale">Sale</option>
-            <option value="rent">Rent</option>
+            <option value="rent">Lease</option>
           </select>
         </div>
         <div>
           <label htmlFor="property-city">City</label>
-          <input id="property-city" value={filters.city} onChange={set('city')} placeholder="e.g. Pune" />
+          <input id="property-city" value={filters.city} onChange={set('city')} placeholder="e.g. Toronto" />
         </div>
       </div>
       <div className="property-filter-options">

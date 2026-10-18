@@ -26,6 +26,7 @@ export default function AdminDashboard() {
   };
   const reviewKyc = async (id, status) => { await api.patch(`/admin/users/${id}/kyc`, { status }); load(); };
   const toggleActive = async (u) => { await api.patch(`/admin/users/${u.id}/active`, { active: !u.active }); load(); };
+  const toggleAgent = async (u) => { await api.patch(`/admin/users/${u.id}/agent`, { is_agent: !u.is_agent }); load(); };
   if (!stats) return <Spinner />;
   const tabs = [
     ['overview', 'Overview'],
@@ -48,8 +49,8 @@ export default function AdminDashboard() {
           <h3>Users</h3>
           <div className="grid cols-4 mb-18">
             <Stat num={stats.users.total} label="Total users" />
-            <Stat num={stats.users.buyers} label="Buyers" color="var(--brand)" />
-            <Stat num={stats.users.sellers} label="Sellers" color="var(--green)" />
+            <Stat num={stats.users.members} label="Member accounts" color="var(--brand)" />
+            <Stat num={stats.users.agents} label="Agents" color="var(--green)" />
             <Stat num={stats.users.pending_kyc} label="Pending KYC" color="var(--amber)" />
           </div>
           <h3>Properties</h3>
@@ -100,13 +101,14 @@ export default function AdminDashboard() {
       {tab === 'users' && (
         <div className="table-wrap card p-0">
           <table>
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>KYC</th><th>Active</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Email</th><th>Account</th><th>Agent</th><th>KYC</th><th>Active</th><th>Actions</th></tr></thead>
             <tbody>
               {users.map((u) => (
                 <tr key={u.id}>
                   <td>{u.name}</td>
                   <td><small>{u.email}</small></td>
-                  <td><Badge value={u.role} /></td>
+                  <td><Badge value={u.role === 'admin' ? 'admin' : 'member'} /></td>
+                  <td>{u.is_agent ? 'Yes' : 'No'}</td>
                   <td><Badge value={u.kyc_status} /></td>
                   <td>{u.active ? '✓' : '✗'}</td>
                   <td className="flex wrap">
@@ -114,6 +116,7 @@ export default function AdminDashboard() {
                       <>
                         {u.kyc_status !== 'verified' && <button className="btn small green" onClick={() => reviewKyc(u.id, 'verified')}>Verify KYC</button>}
                         {u.kyc_status === 'pending' && <button className="btn small danger" onClick={() => reviewKyc(u.id, 'rejected')}>Reject KYC</button>}
+                        <button className="btn small secondary" onClick={() => toggleAgent(u)}>{u.is_agent ? 'Remove agent flag' : 'Flag as agent'}</button>
                         <button className="btn small secondary" onClick={() => toggleActive(u)}>{u.active ? 'Deactivate' : 'Activate'}</button>
                       </>
                     )}

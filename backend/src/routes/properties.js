@@ -9,7 +9,11 @@ import {
 import { required, oneOf, toNumber, HttpError } from '../utils/validate.js';
 import { audit } from '../utils/audit.js';
 const router = Router();
-const PROPERTY_TYPES = ['apartment', 'house', 'plot', 'commercial', 'villa'];
+const PROPERTY_TYPES = [
+  'detached', 'semi_detached', 'freehold_townhouse', 'condo_townhouse',
+  'condo_apt', 'link', 'vacant_land', 'other',
+  'apartment', 'house', 'plot', 'commercial', 'villa',
+];
 const LISTING_TYPES = ['sale', 'rent'];
 const insertProperty = db.prepare(`
   INSERT INTO properties
@@ -34,9 +38,13 @@ const getImages = db.prepare(
 const countInterests = db.prepare(
   'SELECT COUNT(*) AS c FROM interests WHERE property_id = ?'
 );
-function hydrate(row) {
+function hydrate(row, includePrivateDetails = true) {
   if (!row) return null;
   const images = getImages.all(row.id).map((r) => r.url);
+  if (!includePrivateDetails) {
+    const { address, pincode, ...publicRow } = row;
+    return { ...publicRow, images };
+  }
   const interest_count = countInterests.get(row.id).c;
   return { ...row, images, interest_count };
 }
@@ -138,7 +146,7 @@ router.get('/', optionalAuth, (req, res) => {
     )
     .all(params);
   res.json({
-    data: rows.map(hydrate),
+    data: rows.map((row) => hydrate(row, Boolean(req.user))),
     pagination: {
       page: pageNum,
       limit: pageSize,
@@ -160,10 +168,10 @@ router.get('/:id', optionalAuth, (req, res) => {
   if (!isOwner) {
     db.prepare('UPDATE properties SET views = views + 1 WHERE id = ?').run(row.id);
   }
-  res.json({ data: hydrate(getPropertyRow.get(req.params.id)) });
+  res.json({ data: hydrate(getPropertyRow.get(req.params.id), Boolean(req.user)) });
 });
 // POST /api/properties — seller creates a listing (requires KYC)
-router.post('/', authenticate, requireRole('buyer', 'seller'), requireKyc, (req, res) => {
+router.post('/', authenticate, requireRole('member'), requireKyc, (req, res) => {
   const b = req.body;
   required(b, ['title', 'property_type', 'listing_type', 'price']);
   oneOf(b.property_type, PROPERTY_TYPES, 'property_type');
@@ -186,7 +194,7 @@ router.post('/', authenticate, requireRole('buyer', 'seller'), requireKyc, (req,
     address: b.address || null,
     city: b.city || null,
     state: b.state || null,
-    country: b.country || 'India',
+    country: b.country || 'Canada',
     pincode: b.pincode || null,
     status,
   });
@@ -207,7 +215,7 @@ router.post('/', authenticate, requireRole('buyer', 'seller'), requireKyc, (req,
   res.status(201).json({ data: hydrate(getPropertyRow.get(id)) });
 });
 // PUT /api/properties/:id — owner updates (re-enters pending review)
-router.put('/:id', authenticate, requireRole('buyer', 'seller', 'admin'), (req, res) => {
+router.put('/:id', authenticate, requireRole('member', 'admin'), (req, res) => {
   const row = getPropertyRow.get(req.params.id);
   if (!row) throw new HttpError(404, 'Property not found');
   const isAdmin = req.user.role === 'admin';
@@ -266,7 +274,7 @@ router.put('/:id', authenticate, requireRole('buyer', 'seller', 'admin'), (req, 
   res.json({ data: hydrate(getPropertyRow.get(row.id)) });
 });
 // PATCH /api/properties/:id/sold — owner marks as sold
-router.patch('/:id/sold', authenticate, requireRole('buyer', 'seller', 'admin'), (req, res) => {
+router.patch('/:id/sold', authenticate, requireRole('member', 'admin'), (req, res) => {
   const row = getPropertyRow.get(req.params.id);
   if (!row) throw new HttpError(404, 'Property not found');
   if (req.user.role !== 'admin' && row.seller_id !== req.user.id)
@@ -278,7 +286,7 @@ router.patch('/:id/sold', authenticate, requireRole('buyer', 'seller', 'admin'),
   res.json({ data: hydrate(getPropertyRow.get(row.id)) });
 });
 // DELETE /api/properties/:id
-router.delete('/:id', authenticate, requireRole('buyer', 'seller', 'admin'), (req, res) => {
+router.delete('/:id', authenticate, requireRole('member', 'admin'), (req, res) => {
   const row = getPropertyRow.get(req.params.id);
   if (!row) throw new HttpError(404, 'Property not found');
   if (req.user.role !== 'admin' && row.seller_id !== req.user.id)

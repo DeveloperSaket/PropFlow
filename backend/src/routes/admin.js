@@ -24,8 +24,8 @@ router.get('/stats', (req, res) => {
   res.json({
     users: {
       total: one('SELECT COUNT(*) AS c FROM users'),
-      buyers: usersByRole.buyer || 0,
-      sellers: usersByRole.seller || 0,
+      members: usersByRole.member || 0,
+      agents: one('SELECT COUNT(*) AS c FROM users WHERE is_agent = 1'),
       admins: usersByRole.admin || 0,
       pending_kyc: one("SELECT COUNT(*) AS c FROM users WHERE kyc_status='pending'"),
     },
@@ -50,7 +50,7 @@ router.get('/users', (req, res) => {
   const where = [];
   const params = {};
   if (role) {
-    oneOf(role, ['buyer', 'seller', 'admin'], 'role');
+    oneOf(role, ['member', 'admin'], 'role');
     where.push('role = @role');
     params.role = role;
   }
@@ -98,6 +98,24 @@ router.patch('/users/:id/active', (req, res) => {
     entity: 'user',
     entityId: user.id,
     meta: { active: !!active },
+    ip: req.ip,
+  });
+  res.json({ data: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(user.id)) });
+});
+// PATCH /api/admin/users/:id/agent — flag an identified agent account
+router.patch('/users/:id/agent', (req, res) => {
+  const { is_agent } = req.body;
+  if (typeof is_agent !== 'boolean') throw new HttpError(400, 'is_agent must be a boolean');
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  if (!user) throw new HttpError(404, 'User not found');
+  if (user.role === 'admin') throw new HttpError(400, 'Admin accounts cannot be flagged as agents');
+  db.prepare('UPDATE users SET is_agent = ? WHERE id = ?').run(is_agent ? 1 : 0, user.id);
+  audit({
+    actorId: req.user.id,
+    action: 'admin.user_agent_flag',
+    entity: 'user',
+    entityId: user.id,
+    meta: { is_agent },
     ip: req.ip,
   });
   res.json({ data: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(user.id)) });

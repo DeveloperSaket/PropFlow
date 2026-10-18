@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Badge, formatMoney } from './ui.jsx';
+import { getPropertyTypeLabel } from '../constants/propertyTypes.js';
 export default function PropertyCard({ p, showStatus }) {
   const img = p.images?.[0] || `https://picsum.photos/seed/p${p.id}/800/500`;
   return (
@@ -18,7 +19,7 @@ export default function PropertyCard({ p, showStatus }) {
           {p.city || '—'}{p.state ? `, ${p.state}` : ''}
         </div>
         <div className="meta flex wrap gap-12">
-          <span>{p.property_type}</span>
+          <span>{getPropertyTypeLabel(p.property_type)}</span>
           {p.bedrooms != null && <span>{p.bedrooms} bd</span>}
           {p.bathrooms != null && <span>{p.bathrooms} ba</span>}
           {p.area_sqft != null && <span>{p.area_sqft} sqft</span>}
