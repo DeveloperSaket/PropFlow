@@ -1,16 +1,21 @@
 import { PROPERTY_TYPES } from '../constants/propertyTypes.js';
+import Range from '../lib/range/index.jsx';
 
-export const PRICE_RANGES = [
-  { value: '', label: 'Any' },
-  { value: '0-500000', label: '$0 – $500K', min: 0, max: 500000 },
-  { value: '500000-1000000', label: '$500K – $1M', min: 500000, max: 1000000 },
-  { value: '1000000-2000000', label: '$1M – $2M', min: 1000000, max: 2000000 },
-  { value: '2000000-5000000', label: '$2M – $5M', min: 2000000, max: 5000000 },
-  { value: '5000000-99999999', label: '$5M+', min: 5000000, max: 99999999 },
-];
+export const PRICE_MIN = 0;
+export const PRICE_MAX = 100_000_000;
+
+const formatPrice = (value) => new Intl.NumberFormat('en-CA', {
+  style: 'currency',
+  currency: 'CAD',
+  maximumFractionDigits: 0,
+}).format(value);
 
 export default function PropertyFilters({ filters, onFilterChange, onApply, onReset }) {
   const set = (key) => (event) => onFilterChange(key, event.target.value);
+  const setPriceRange = (min, max) => {
+    onFilterChange('minPrice', min);
+    onFilterChange('maxPrice', max);
+  };
 
   return (
     <form className="card mb-20 property-filters" onSubmit={onApply}>
@@ -42,19 +47,17 @@ export default function PropertyFilters({ filters, onFilterChange, onApply, onRe
       <div className="property-filter-options">
         <div className="property-filter-price">
           <span className="filter-label">Price range</span>
-          <div className="price-range-bar" aria-label="Price range selector">
-            {PRICE_RANGES.map((range) => (
-              <button
-                key={range.value || 'any'}
-                type="button"
-                className={`price-range-option ${filters.priceRange === range.value ? 'active' : ''}`}
-                aria-pressed={filters.priceRange === range.value}
-                onClick={() => onFilterChange('priceRange', range.value)}
-              >
-                {range.label}
-              </button>
-            ))}
+          <div className="price-range-values" aria-live="polite">
+            <span>{formatPrice(filters.minPrice)}</span>
+            <span>{filters.maxPrice === PRICE_MAX ? `${formatPrice(filters.maxPrice)}+` : formatPrice(filters.maxPrice)}</span>
           </div>
+          <Range
+            min={PRICE_MIN}
+            max={PRICE_MAX}
+            valueMin={filters.minPrice}
+            valueMax={filters.maxPrice}
+            onChange={setPriceRange}
+          />
         </div>
         <div>
           <label htmlFor="property-bedrooms">Min beds</label>
