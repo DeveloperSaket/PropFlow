@@ -8,9 +8,11 @@ const formatPrice = (value) => new Intl.NumberFormat('en-CA', {
   style: 'currency',
   currency: 'CAD',
   maximumFractionDigits: 0,
-}).format(value);
+}).format(Number.isFinite(Number(value)) ? Number(value) : 0);
 
 export default function PropertyFilters({ filters, onFilterChange, onApply, onReset }) {
+  const minPrice = Number.isFinite(Number(filters.minPrice)) ? Number(filters.minPrice) : PRICE_MIN;
+  const maxPrice = Number.isFinite(Number(filters.maxPrice)) ? Number(filters.maxPrice) : PRICE_MAX;
   const set = (key) => (event) => onFilterChange(key, event.target.value);
   const setPriceRange = (min, max) => {
     onFilterChange('minPrice', min);
@@ -48,14 +50,14 @@ export default function PropertyFilters({ filters, onFilterChange, onApply, onRe
         <div className="property-filter-price">
           <span className="filter-label">Price range</span>
           <div className="price-range-values" aria-live="polite">
-            <span>{formatPrice(filters.minPrice)}</span>
-            <span>{filters.maxPrice === PRICE_MAX ? `${formatPrice(filters.maxPrice)}+` : formatPrice(filters.maxPrice)}</span>
+            <span>{formatPrice(minPrice)}</span>
+            <span>{maxPrice === PRICE_MAX ? `${formatPrice(maxPrice)}+` : formatPrice(maxPrice)}</span>
           </div>
           <Range
             min={PRICE_MIN}
             max={PRICE_MAX}
-            valueMin={filters.minPrice}
-            valueMax={filters.maxPrice}
+            valueMin={minPrice}
+            valueMax={maxPrice}
             onChange={setPriceRange}
           />
         </div>
