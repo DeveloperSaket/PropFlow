@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${DEPLOY_HOST:?Set DEPLOY_HOST to the Linode's IP address or SSH host}"
-: "${DEPLOY_USER:?Set DEPLOY_USER to the SSH user}"
+DEPLOY_HOST="${DEPLOY_HOST:-172.105.22.18}"
+DEPLOY_USER="${DEPLOY_USER:-root}"
 DEPLOY_PATH="${DEPLOY_PATH:-/opt/propflow}"
 SSH_PORT="${SSH_PORT:-22}"
 REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"

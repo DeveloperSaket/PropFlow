@@ -45,8 +45,7 @@ example template and stops. Edit that file on the Linode before running the
 script again. For a non-default deployment directory, set `DEPLOY_PATH`.
 
 ```bash
-ssh deploy@<linode-ip> 'sudo mkdir -p /opt/propflow && sudo chown "$USER":"$USER" /opt/propflow'
-ssh deploy@<linode-ip> 'cd /opt/propflow && nano .env'
+ssh root@172.105.22.18 'cd /opt/propflow && nano .env'
 ```
 
 Edit `.env` on the server: set `APP_DOMAIN`, a unique long `JWT_SECRET`, and a
@@ -59,13 +58,14 @@ macOS, WSL, or Git Bash with rsync installed). It syncs the current working tree
 and rebuilds/restarts the app on the Linode:
 
 ```bash
-DEPLOY_HOST=203.0.113.10 DEPLOY_USER=deploy bash deploy.sh
+bash deploy.sh
 ```
 
-Optional settings: `DEPLOY_PATH` (defaults to `/opt/propflow`) and `SSH_PORT`
-(defaults to `22`). To review the running services and logs, use
-`ssh deploy@<linode-ip> 'cd /opt/propflow && docker compose ps'` and
-`ssh deploy@<linode-ip> 'cd /opt/propflow && docker compose logs -f'`.
+The script defaults to `root@172.105.22.18`. Override with `DEPLOY_HOST` and/or
+`DEPLOY_USER` if needed. Optional settings: `DEPLOY_PATH` (defaults to
+`/opt/propflow`) and `SSH_PORT` (defaults to `22`). To review the running
+services and logs, use `ssh root@172.105.22.18 'cd /opt/propflow && docker compose ps'`
+and `ssh root@172.105.22.18 'cd /opt/propflow && docker compose logs -f'`.
 
 The deployment serves `/uploads` the same way the current backend does: uploaded
 KYC documents are publicly accessible by URL. Do not store real identity
