@@ -1,0 +1,10 @@
+.git
+.env
+**/.env
+backend/.env
+frontend/.env.local
+**/node_modules
+backend/data
+backend/uploads
+frontend/dist
+*.service-account.json

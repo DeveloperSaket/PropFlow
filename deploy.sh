@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${DEPLOY_HOST:?Set DEPLOY_HOST to the Linode's IP address or SSH host}"
+: "${DEPLOY_USER:?Set DEPLOY_USER to the SSH user}"
+DEPLOY_PATH="${DEPLOY_PATH:-/opt/propflow}"
+SSH_PORT="${SSH_PORT:-22}"
+REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
+
+if [[ ! "$DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+  echo "DEPLOY_PATH must be an absolute path containing only letters, digits, '.', '_', '/', or '-'" >&2
+  exit 2
+fi
+if [[ ! "$SSH_PORT" =~ ^[0-9]+$ ]]; then
+  echo "SSH_PORT must be a port number" >&2
+  exit 2
+fi
+for command in ssh rsync; do
+  if ! command -v "$command" >/dev/null 2>&1; then
+    echo "Required command not found: $command" >&2
+    exit 2
+  fi
+done
+
+echo "Checking remote deployment prerequisites..."
+ssh -p "$SSH_PORT" "$REMOTE" \
+  "command -v docker >/dev/null && docker compose version >/dev/null && mkdir -p '$DEPLOY_PATH'" || {
+  echo "Remote Docker Compose is unavailable or $DEPLOY_PATH cannot be created." >&2
+  echo "Install Docker and the Docker Compose plugin on the server first." >&2
+  exit 1
+}
+
+echo "Syncing source to $REMOTE:$DEPLOY_PATH..."
+rsync -az --delete -e "ssh -p $SSH_PORT" \
+  --exclude '/.git/' \
+  --exclude '/.env' \
+  --exclude '/node_modules/' \
+  --exclude '/backend/.env' \
+  --exclude '/backend/data/' \
+  --exclude '/backend/uploads/' \
+  --exclude '/frontend/.env.local' \
+  --exclude '/frontend/dist/' \
+  --exclude '/*.service-account.json' \
+  --exclude '/**/node_modules/' \
+  --exclude '/**/data/' \
+  --exclude '/**/uploads/' \
+  ./ "$REMOTE:$DEPLOY_PATH/"
+
+if ! ssh -p "$SSH_PORT" "$REMOTE" \
+  "cd '$DEPLOY_PATH' && test -f .env"; then
+  ssh -p "$SSH_PORT" "$REMOTE" \
+    "cd '$DEPLOY_PATH' && cp .env.example .env && chmod 600 .env"
+  echo "Created $DEPLOY_PATH/.env from .env.example. Edit it on the Linode, then rerun this command." >&2
+  exit 1
+fi
+
+if ssh -p "$SSH_PORT" "$REMOTE" \
+  "cd '$DEPLOY_PATH' && grep -Eq '^(APP_DOMAIN=propflow\.example\.com|JWT_SECRET=replace-with-a-long-random-secret|ADMIN_PASSWORD=replace-with-a-unique-strong-password)$' .env"; then
+  echo "Replace the example domain, JWT secret, and admin password in $DEPLOY_PATH/.env before deploying." >&2
+  exit 1
+fi
+
+echo "Building and restarting the application..."
+ssh -p "$SSH_PORT" "$REMOTE" \
+  "cd '$DEPLOY_PATH' && chmod 600 .env && docker compose up -d --build --remove-orphans && docker compose ps"
+
+echo "Deployment complete."

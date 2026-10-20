@@ -30,6 +30,51 @@ npm run dev             # runs backend (:5005) and frontend (:5173) together
 Then open **http://localhost:5173**.
 > Run servers separately if you prefer:
 > `npm run dev:backend` and (in another shell) `npm run dev:frontend`.
+
+## Deploy to Linode
+
+This repository includes a Docker Compose deployment with Caddy-managed HTTPS.
+Use an Ubuntu Linode with Docker Engine and the Docker Compose plugin installed,
+and configure an SSH key for the deployment user, who must be able to run Docker
+commands. Point the app domain's DNS
+`A` record (and, if used, `AAAA` record) to the Linode before the first deploy;
+allow inbound TCP ports 80 and 443.
+
+The first run of the deploy script creates `/opt/propflow/.env` from the
+example template and stops. Edit that file on the Linode before running the
+script again. For a non-default deployment directory, set `DEPLOY_PATH`.
+
+```bash
+ssh deploy@<linode-ip> 'sudo mkdir -p /opt/propflow && sudo chown "$USER":"$USER" /opt/propflow'
+ssh deploy@<linode-ip> 'cd /opt/propflow && nano .env'
+```
+
+Edit `.env` on the server: set `APP_DOMAIN`, a unique long `JWT_SECRET`, and a
+strong `ADMIN_PASSWORD`. Keep this file on the server; it is excluded from sync.
+The application creates its admin user on first startup. Existing accounts and
+uploads persist in Docker volumes across deployments.
+
+Run the deploy script from a Bash environment with `ssh` and `rsync` (Linux,
+macOS, WSL, or Git Bash with rsync installed). It syncs the current working tree
+and rebuilds/restarts the app on the Linode:
+
+```bash
+DEPLOY_HOST=203.0.113.10 DEPLOY_USER=deploy bash deploy.sh
+```
+
+Optional settings: `DEPLOY_PATH` (defaults to `/opt/propflow`) and `SSH_PORT`
+(defaults to `22`). To review the running services and logs, use
+`ssh deploy@<linode-ip> 'cd /opt/propflow && docker compose ps'` and
+`ssh deploy@<linode-ip> 'cd /opt/propflow && docker compose logs -f'`.
+
+The deployment serves `/uploads` the same way the current backend does: uploaded
+KYC documents are publicly accessible by URL. Do not store real identity
+documents in this deployment until that route is protected with authorization
+or replaced with private object storage. Firebase-backed chat also requires
+Firebase web configuration and backend Application Default Credentials; those
+credentials must be securely mounted into the backend container before enabling
+it in production.
+
 ### Demo accounts (created by `npm run seed`)
 | Role | Email | Password |
 |------|-------|----------|

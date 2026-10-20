@@ -3,4 +3,4 @@ backend/.env
 frontend/.env.local
 *.service-account.json
 frontend/dist
-
+.env
