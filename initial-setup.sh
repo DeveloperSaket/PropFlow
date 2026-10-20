@@ -15,14 +15,14 @@ if [[ ! "$SSH_PORT" =~ ^[0-9]+$ ]]; then
   echo "SSH_PORT must be a port number" >&2
   exit 2
 fi
-for command in ssh rsync; do
+for command in ssh tar; do
   if ! command -v "$command" >/dev/null 2>&1; then
     echo "Required local command not found: $command" >&2
     exit 2
   fi
 done
 
-echo "Installing Docker Engine, the Compose plugin, and rsync on $REMOTE..."
+echo "Installing Docker Engine and the Compose plugin on $REMOTE..."
 ssh -p "$SSH_PORT" "$REMOTE" "bash -s -- '$DEPLOY_PATH'" <<'REMOTE_SETUP'
 set -euo pipefail
 
@@ -49,7 +49,7 @@ if [[ -z "$CODENAME" ]]; then
 fi
 
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl gnupg rsync
+DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl gnupg
 
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL "https://download.docker.com/linux/$ID/gpg" |
@@ -74,20 +74,37 @@ echo "Server dependencies installed; $DEPLOY_PATH is ready."
 REMOTE_SETUP
 
 echo "Syncing the project files to $REMOTE:$DEPLOY_PATH..."
-rsync -az --delete -e "ssh -p $SSH_PORT" \
-  --exclude '/.git/' \
-  --exclude '/.env' \
-  --exclude '/node_modules/' \
-  --exclude '/backend/.env' \
-  --exclude '/backend/data/' \
-  --exclude '/backend/uploads/' \
-  --exclude '/frontend/.env.local' \
-  --exclude '/frontend/dist/' \
-  --exclude '/*.service-account.json' \
-  --exclude '/**/node_modules/' \
-  --exclude '/**/data/' \
-  --exclude '/**/uploads/' \
-  ./ "$REMOTE:$DEPLOY_PATH/"
+if command -v rsync >/dev/null 2>&1; then
+  rsync -az --delete -e "ssh -p $SSH_PORT" \
+    --exclude '/.git/' \
+    --exclude '/.env' \
+    --exclude '/node_modules/' \
+    --exclude '/backend/.env' \
+    --exclude '/backend/data/' \
+    --exclude '/backend/uploads/' \
+    --exclude '/frontend/.env.local' \
+    --exclude '/frontend/dist/' \
+    --exclude '/*.service-account.json' \
+    --exclude '/**/node_modules/' \
+    --exclude '/**/data/' \
+    --exclude '/**/uploads/' \
+    ./ "$REMOTE:$DEPLOY_PATH/"
+else
+  tar -czf - \
+    --exclude=.git \
+    --exclude=.env \
+    --exclude=node_modules \
+    --exclude=backend/.env \
+    --exclude=backend/data \
+    --exclude=backend/uploads \
+    --exclude=frontend/.env.local \
+    --exclude=frontend/dist \
+    --exclude='*.service-account.json' \
+    --exclude=data \
+    --exclude=uploads \
+    . | ssh -p "$SSH_PORT" "$REMOTE" \
+      "tar -xzf - -C '$DEPLOY_PATH'"
+fi
 
 ssh -p "$SSH_PORT" "$REMOTE" \
   "cd '$DEPLOY_PATH' && if [ ! -f .env ]; then cp .env.example .env; fi && chmod 600 .env"

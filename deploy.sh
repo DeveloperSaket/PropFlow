@@ -15,7 +15,7 @@ if [[ ! "$SSH_PORT" =~ ^[0-9]+$ ]]; then
   echo "SSH_PORT must be a port number" >&2
   exit 2
 fi
-for command in ssh rsync; do
+for command in ssh tar; do
   if ! command -v "$command" >/dev/null 2>&1; then
     echo "Required command not found: $command" >&2
     exit 2
@@ -31,20 +31,37 @@ ssh -p "$SSH_PORT" "$REMOTE" \
 }
 
 echo "Syncing source to $REMOTE:$DEPLOY_PATH..."
-rsync -az --delete -e "ssh -p $SSH_PORT" \
-  --exclude '/.git/' \
-  --exclude '/.env' \
-  --exclude '/node_modules/' \
-  --exclude '/backend/.env' \
-  --exclude '/backend/data/' \
-  --exclude '/backend/uploads/' \
-  --exclude '/frontend/.env.local' \
-  --exclude '/frontend/dist/' \
-  --exclude '/*.service-account.json' \
-  --exclude '/**/node_modules/' \
-  --exclude '/**/data/' \
-  --exclude '/**/uploads/' \
-  ./ "$REMOTE:$DEPLOY_PATH/"
+if command -v rsync >/dev/null 2>&1; then
+  rsync -az --delete -e "ssh -p $SSH_PORT" \
+    --exclude '/.git/' \
+    --exclude '/.env' \
+    --exclude '/node_modules/' \
+    --exclude '/backend/.env' \
+    --exclude '/backend/data/' \
+    --exclude '/backend/uploads/' \
+    --exclude '/frontend/.env.local' \
+    --exclude '/frontend/dist/' \
+    --exclude '/*.service-account.json' \
+    --exclude '/**/node_modules/' \
+    --exclude '/**/data/' \
+    --exclude '/**/uploads/' \
+    ./ "$REMOTE:$DEPLOY_PATH/"
+else
+  tar -czf - \
+    --exclude=.git \
+    --exclude=.env \
+    --exclude=node_modules \
+    --exclude=backend/.env \
+    --exclude=backend/data \
+    --exclude=backend/uploads \
+    --exclude=frontend/.env.local \
+    --exclude=frontend/dist \
+    --exclude='*.service-account.json' \
+    --exclude=data \
+    --exclude=uploads \
+    . | ssh -p "$SSH_PORT" "$REMOTE" \
+      "tar -xzf - -C '$DEPLOY_PATH'"
+fi
 
 if ! ssh -p "$SSH_PORT" "$REMOTE" \
   "cd '$DEPLOY_PATH' && test -f .env"; then

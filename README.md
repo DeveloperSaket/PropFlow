@@ -35,7 +35,7 @@ Then open **http://localhost:5173**.
 
 This repository includes a Docker Compose deployment with Caddy-managed HTTPS.
 Use an Ubuntu or Debian Linode and configure root SSH access. The initial setup
-script installs Docker Engine, the Compose plugin, and rsync, then syncs the
+script installs Docker Engine and the Compose plugin, then syncs the
 project files to the server. It does not start the application. Point the app
 domain's DNS `A` record (and, if used, `AAAA` record) to the Linode before
 deploying; allow inbound TCP ports 80 and 443 in the Linode firewall.
@@ -45,9 +45,10 @@ bash initial-setup.sh
 ```
 
 The script defaults to `root@172.105.22.18`. It requires local Bash, `ssh`, and
-`rsync`; the server needs internet access for package installation and Docker
-image builds. After setup, set `APP_DOMAIN`, a unique long `JWT_SECRET`, and a
-strong `ADMIN_PASSWORD` in the server's private `.env`:
+`tar`; if `rsync` is installed, it uses it instead. The server needs internet
+access for package installation and Docker image builds. After setup, set
+`APP_DOMAIN`, a unique long `JWT_SECRET`, and a strong `ADMIN_PASSWORD` in the
+server's private `.env`:
 
 ```bash
 ssh root@172.105.22.18 'cd /opt/propflow && nano .env'
@@ -63,6 +64,9 @@ a Bash environment:
 ```bash
 bash deploy.sh
 ```
+
+When local `rsync` is unavailable (as is common in Git Bash), both scripts
+transfer the project as a compressed tar stream over SSH instead.
 
 The script defaults to `root@172.105.22.18`. Override with `DEPLOY_HOST` and/or
 `DEPLOY_USER` if needed. Optional settings: `DEPLOY_PATH` (defaults to
