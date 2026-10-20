@@ -34,28 +34,31 @@ Then open **http://localhost:5173**.
 ## Deploy to Linode
 
 This repository includes a Docker Compose deployment with Caddy-managed HTTPS.
-Use an Ubuntu Linode with Docker Engine and the Docker Compose plugin installed,
-and configure an SSH key for the deployment user, who must be able to run Docker
-commands. Point the app domain's DNS
-`A` record (and, if used, `AAAA` record) to the Linode before the first deploy;
-allow inbound TCP ports 80 and 443.
+Use an Ubuntu or Debian Linode and configure root SSH access. The initial setup
+script installs Docker Engine, the Compose plugin, and rsync, then syncs the
+project files to the server. It does not start the application. Point the app
+domain's DNS `A` record (and, if used, `AAAA` record) to the Linode before
+deploying; allow inbound TCP ports 80 and 443 in the Linode firewall.
 
-The first run of the deploy script creates `/opt/propflow/.env` from the
-example template and stops. Edit that file on the Linode before running the
-script again. For a non-default deployment directory, set `DEPLOY_PATH`.
+```bash
+bash initial-setup.sh
+```
+
+The script defaults to `root@172.105.22.18`. It requires local Bash, `ssh`, and
+`rsync`; the server needs internet access for package installation and Docker
+image builds. After setup, set `APP_DOMAIN`, a unique long `JWT_SECRET`, and a
+strong `ADMIN_PASSWORD` in the server's private `.env`:
 
 ```bash
 ssh root@172.105.22.18 'cd /opt/propflow && nano .env'
 ```
 
-Edit `.env` on the server: set `APP_DOMAIN`, a unique long `JWT_SECRET`, and a
-strong `ADMIN_PASSWORD`. Keep this file on the server; it is excluded from sync.
-The application creates its admin user on first startup. Existing accounts and
-uploads persist in Docker volumes across deployments.
+Keep `.env` on the server; it is excluded from sync. The application creates
+its admin user on first startup. Existing accounts and uploads persist in Docker
+volumes across deployments.
 
-Run the deploy script from a Bash environment with `ssh` and `rsync` (Linux,
-macOS, WSL, or Git Bash with rsync installed). It syncs the current working tree
-and rebuilds/restarts the app on the Linode:
+Once the server is prepared and `.env` is configured, deploy (or redeploy) from
+a Bash environment:
 
 ```bash
 bash deploy.sh
