@@ -35,6 +35,7 @@ if command -v rsync >/dev/null 2>&1; then
   rsync -az --delete -e "ssh -p $SSH_PORT" \
     --exclude '/.git/' \
     --exclude '/.env' \
+    --exclude '/.env.dev' \
     --exclude '/node_modules/' \
     --exclude '/backend/.env' \
     --exclude '/backend/data/' \
@@ -50,6 +51,7 @@ else
   tar -czf - \
     --exclude=.git \
     --exclude=.env \
+    --exclude=.env.dev \
     --exclude=node_modules \
     --exclude=backend/.env \
     --exclude=backend/data \

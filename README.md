@@ -74,6 +74,41 @@ The script defaults to `root@172.105.22.18`. Override with `DEPLOY_HOST` and/or
 services and logs, use `ssh root@172.105.22.18 'cd /opt/propflow && docker compose ps'`
 and `ssh root@172.105.22.18 'cd /opt/propflow && docker compose logs -f'`.
 
+### Development deployment with demo data
+
+The dev deployment uses its own Compose project, database/uploads volumes, and
+HTTP port `8080`; it does not occupy production's ports 80/443. It runs the
+existing `npm run seed` inside the backend container only on the first
+deployment, so normal redeployments preserve test changes and do not add
+duplicate demo appointments. To deliberately reset dev data, remove the
+`propflow-dev` Docker volumes before redeploying; this permanently deletes dev
+test data. Use the demo member accounts listed below; the dev admin credentials
+are the `ADMIN_EMAIL` and `ADMIN_PASSWORD` values in `.env.dev`.
+
+On a fresh Linode, initialize the dev path once (Docker installation is shared
+with production):
+
+```bash
+DEPLOY_PATH=/opt/propflow-dev bash initial-setup.sh
+```
+
+Run `deploy-dev.sh` once to sync the files and create
+`/opt/propflow-dev/.env.dev` from the example template; it stops before starting
+the app. Set a strong dev `JWT_SECRET` and `ADMIN_PASSWORD` in that file, then
+run it again to build, seed, and start the dev stack:
+
+```bash
+bash deploy-dev.sh
+ssh root@172.105.22.18 'cd /opt/propflow-dev && nano .env.dev'
+bash deploy-dev.sh
+```
+
+The script defaults to `root@172.105.22.18`; configure the Linode firewall to
+allow TCP port `8080` to test at `http://172.105.22.18:8080`. Set
+`DEPLOY_PATH=/opt/propflow-dev` when running `deploy-dev.sh` if using a
+non-default path. This is an HTTP test deployment; do not use production
+credentials or real user data.
+
 The deployment serves `/uploads` the same way the current backend does: uploaded
 KYC documents are publicly accessible by URL. Do not store real identity
 documents in this deployment until that route is protected with authorization

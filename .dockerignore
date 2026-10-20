@@ -1,5 +1,6 @@
 .git
 .env
+.env.dev
 **/.env
 backend/.env
 frontend/.env.local

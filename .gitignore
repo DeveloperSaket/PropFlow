@@ -4,3 +4,4 @@ frontend/.env.local
 *.service-account.json
 frontend/dist
 .env
+.env.dev
