@@ -1,0 +1,12 @@
+services:
+  backend:
+    environment:
+      CORS_ORIGIN: http://${APP_DOMAIN}:8081
+
+  frontend:
+    ports:
+      - "8081:80"
+
+  caddy:
+    profiles:
+      - production

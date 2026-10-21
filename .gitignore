@@ -5,3 +5,4 @@ frontend/.env.local
 frontend/dist
 .env
 .env.dev
+.env.staging

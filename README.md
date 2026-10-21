@@ -117,6 +117,38 @@ Firebase web configuration and backend Application Default Credentials; those
 credentials must be securely mounted into the backend container before enabling
 it in production.
 
+### Staging deployment without demo data
+
+The staging deployment uses its own Compose project, database/uploads volumes,
+and HTTP port `8081`. It does not run `npm run seed`, so the database starts
+without demo members, listings, interests, or appointments. The backend still
+creates the configured admin account at startup; set a unique staging
+`ADMIN_EMAIL` and strong `ADMIN_PASSWORD` in `.env.staging`.
+
+On a fresh server, initialize the staging path once (Docker installation is
+shared with other deployments):
+
+```bash
+DEPLOY_PATH=/opt/propflow-staging bash initial-setup.sh
+```
+
+Run `deploy-staging.sh` once to sync files and create
+`/opt/propflow-staging/.env.staging`; it stops before starting the app. Edit
+that file on the server to set a unique staging `JWT_SECRET` and admin
+credentials, then run the script again:
+
+```bash
+bash deploy-staging.sh
+ssh root@172.105.22.18 'cd /opt/propflow-staging && nano .env.staging'
+bash deploy-staging.sh
+```
+
+Allow inbound TCP port `8081` in the server firewall, then open
+`http://172.105.22.18:8081`. The script defaults to
+`/opt/propflow-staging`; set `DEPLOY_PATH` when using a different path. Staging
+data persists in its own Docker volumes between deployments. This is an HTTP
+test deployment; do not use production credentials or real user data.
+
 ### Demo accounts (created by `npm run seed`)
 | Role | Email | Password |
 |------|-------|----------|

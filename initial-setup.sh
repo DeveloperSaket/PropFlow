@@ -82,6 +82,7 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude '/initial-setup.sh' \
     --exclude '/.env' \
     --exclude '/.env.dev' \
+    --exclude '/.env.staging' \
     --exclude '/node_modules/' \
     --exclude '/backend/.env' \
     --exclude '/backend/data/' \
@@ -101,6 +102,7 @@ else
     --exclude=initial-setup.sh \
     --exclude=.env \
     --exclude=.env.dev \
+    --exclude=.env.staging \
     --exclude=node_modules \
     --exclude=backend/.env \
     --exclude=backend/data \
