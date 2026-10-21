@@ -9,3 +9,6 @@ backend/data
 backend/uploads
 frontend/dist
 *.service-account.json
+/deploy.sh
+/deploy-dev.sh
+/initial-setup.sh

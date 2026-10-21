@@ -34,6 +34,9 @@ echo "Syncing source to $REMOTE:$DEPLOY_PATH..."
 if command -v rsync >/dev/null 2>&1; then
   rsync -az --delete -e "ssh -p $SSH_PORT" \
     --exclude '/.git/' \
+    --exclude '/deploy.sh' \
+    --exclude '/deploy-dev.sh' \
+    --exclude '/initial-setup.sh' \
     --exclude '/.env' \
     --exclude '/.env.dev' \
     --exclude '/node_modules/' \
@@ -50,6 +53,9 @@ if command -v rsync >/dev/null 2>&1; then
 else
   tar -czf - \
     --exclude=.git \
+    --exclude=deploy.sh \
+    --exclude=deploy-dev.sh \
+    --exclude=initial-setup.sh \
     --exclude=.env \
     --exclude=.env.dev \
     --exclude=node_modules \
