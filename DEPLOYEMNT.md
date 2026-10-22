@@ -2,9 +2,9 @@
 
 Added a Linode deployment setup using Docker Compose:
 
-- `compose.yaml` runs the backend, frontend, and Caddy for automatic HTTPS. SQLite data and uploads use persistent Docker volumes.
+- `compose.yaml` runs the backend and frontend. Host Nginx with Certbot provides HTTPS and routes production, dev, and staging hostnames to loopback-only frontend ports. SQLite data and uploads use persistent Docker volumes.
 - `deploy.sh` syncs the current working tree over SSH and rebuilds/restarts the app. On its first run, it creates the server’s `.env` from the template and stops so you can set the domain and secrets.
-- Added the Dockerfiles, Nginx/Caddy configuration, `.env.example`, and `.dockerignore`.
+- Added the Dockerfiles, Nginx configuration, `.env.example`, and `.dockerignore`.
 - Added setup and deployment instructions to `README.md`.
 
 **To deploy:** provision an Ubuntu Linode with Docker Compose, configure its DNS and SSH access, then run `DEPLOY_HOST=<ip> DEPLOY_USER=<user> bash deploy.sh` from a Bash environment with `rsync`. Edit `/opt/propflow/.env` on the server after the first run, then run the command again.

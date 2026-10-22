@@ -47,24 +47,6 @@ services:
     expose:
       - "80"
 
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    depends_on:
-      - frontend
-    environment:
-      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN in .env}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-
 volumes:
   propflow-data:
   propflow-uploads:
-  caddy-data:
-  caddy-config:

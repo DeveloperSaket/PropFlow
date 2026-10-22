@@ -79,6 +79,7 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude '/.git/' \
     --exclude '/deploy.sh' \
     --exclude '/deploy-dev.sh' \
+    --exclude '/nginx-setup.sh' \
     --exclude '/initial-setup.sh' \
     --exclude '/.env' \
     --exclude '/.env.dev' \
@@ -99,6 +100,7 @@ else
     --exclude=.git \
     --exclude=deploy.sh \
     --exclude=deploy-dev.sh \
+    --exclude=nginx-setup.sh \
     --exclude=initial-setup.sh \
     --exclude=.env \
     --exclude=.env.dev \

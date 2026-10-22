@@ -39,6 +39,7 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude '/.git/' \
     --exclude '/deploy.sh' \
     --exclude '/deploy-dev.sh' \
+    --exclude '/nginx-setup.sh' \
     --exclude '/initial-setup.sh' \
     --exclude '/.env' \
     --exclude '/.env.dev' \
@@ -59,6 +60,7 @@ else
     --exclude=.git \
     --exclude=deploy.sh \
     --exclude=deploy-dev.sh \
+    --exclude=nginx-setup.sh \
     --exclude=initial-setup.sh \
     --exclude=.env \
     --exclude=.env.dev \
@@ -98,4 +100,4 @@ echo "Seeding development demo data on first deployment..."
 ssh -p "$SSH_PORT" "$REMOTE" \
   "cd '$DEPLOY_PATH' && docker compose -p '$COMPOSE_PROJECT' $COMPOSE_ENV $COMPOSE_FILES exec -T backend sh -c 'if [ ! -f /app/data/.propflow-dev-seeded ]; then npm run seed && touch /app/data/.propflow-dev-seeded; fi' && docker compose -p '$COMPOSE_PROJECT' $COMPOSE_ENV $COMPOSE_FILES ps"
 
-echo "Development deployment ready at http://$DEPLOY_HOST:8080"
+echo "Development deployment ready at https://dev.negobrick.com"

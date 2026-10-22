@@ -33,12 +33,15 @@ Then open **http://localhost:5173**.
 
 ## Deploy to Linode
 
-This repository includes a Docker Compose deployment with Caddy-managed HTTPS.
-Use an Ubuntu or Debian Linode and configure root SSH access. The initial setup
-script installs Docker Engine and the Compose plugin, then syncs the
-project files to the server. It does not start the application. Point the app
-domain's DNS `A` record (and, if used, `AAAA` record) to the Linode before
-deploying; allow inbound TCP ports 80 and 443 in the Linode firewall.
+This repository deploys the application stacks with Docker Compose and uses
+host Nginx with Certbot-managed HTTPS to route traffic. Use an Ubuntu or Debian
+Linode and configure root SSH access. The initial setup script installs Docker
+Engine and the Compose plugin, then syncs the project files to the server. It
+does not start the application. Point DNS `A` records for
+`negobrick.com`, `www.negobrick.com`, `dev.negobrick.com`, and `stg.negobrick.com`
+to the Linode before configuring Nginx. Only add `AAAA` records if the server
+is reachable over IPv6. Allow inbound TCP ports 80 and 443 in the Linode
+firewall.
 
 ```bash
 bash initial-setup.sh
@@ -65,8 +68,8 @@ a Bash environment:
 bash deploy.sh
 ```
 
-When local `rsync` is unavailable (as is common in Git Bash), both scripts
-transfer the project as a compressed tar stream over SSH instead.
+When local `rsync` is unavailable (as is common in Git Bash), the deployment
+scripts transfer the project as a compressed tar stream over SSH instead.
 
 The script defaults to `root@172.105.22.18`. Override with `DEPLOY_HOST` and/or
 `DEPLOY_USER` if needed. Optional settings: `DEPLOY_PATH` (defaults to
@@ -74,11 +77,48 @@ The script defaults to `root@172.105.22.18`. Override with `DEPLOY_HOST` and/or
 services and logs, use `ssh root@172.105.22.18 'cd /opt/propflow && docker compose ps'`
 and `ssh root@172.105.22.18 'cd /opt/propflow && docker compose logs -f'`.
 
+### Nginx routing and HTTPS
+
+Production is published to `127.0.0.1:8082`, development to
+`127.0.0.1:8080`, and staging to `127.0.0.1:8081`. These ports are only
+available locally on the server; host Nginx routes the public domains to them:
+
+| Hostname | Stack |
+|----------|-------|
+| `negobrick.com`, `www.negobrick.com` | Production |
+| `dev.negobrick.com` | Development |
+| `stg.negobrick.com` | Staging |
+
+Set `APP_DOMAIN=negobrick.com` in `/opt/propflow/.env`,
+`APP_DOMAIN=dev.negobrick.com` in `/opt/propflow-dev/.env.dev`, and
+`APP_DOMAIN=stg.negobrick.com` in `/opt/propflow-staging/.env.staging`. Deploy
+each stack with its deploy script before running `nginx-setup.sh`; this also
+removes the old production Caddy container so ports 80 and 443 are free. The
+script installs host Nginx and Certbot, configures the routes, obtains
+Let's Encrypt certificates for all four hostnames, and enables automatic
+certificate renewal. It requires DNS to resolve to the server and ports 80/443
+to be reachable. Existing unrelated Nginx sites are left in place.
+
+Run from Bash on the deployment machine:
+
+```bash
+LETSENCRYPT_EMAIL=admin@negobrick.com bash nginx-setup.sh
+```
+
+The script defaults to `root@172.105.22.18`; set `DEPLOY_HOST`, `DEPLOY_USER`,
+or `SSH_PORT` to override those connection settings. Check the host-side
+configuration and service on the Linode with:
+
+```bash
+ssh root@172.105.22.18 'sudo nginx -t && sudo systemctl status nginx --no-pager'
+ssh root@172.105.22.18 'sudo nginx -T'
+```
+
 ### Development deployment with demo data
 
 The dev deployment uses its own Compose project, database/uploads volumes, and
-HTTP port `8080`; it does not occupy production's ports 80/443. It runs the
-existing `npm run seed` inside the backend container only on the first
+internal port `8080`; host Nginx exposes it at `https://dev.negobrick.com`. It
+runs the existing `npm run seed` inside the backend container only on the first
 deployment, so normal redeployments preserve test changes and do not add
 duplicate demo appointments. To deliberately reset dev data, remove the
 `propflow-dev` Docker volumes before redeploying; this permanently deletes dev
@@ -103,11 +143,11 @@ ssh root@172.105.22.18 'cd /opt/propflow-dev && nano .env.dev'
 bash deploy-dev.sh
 ```
 
-The script defaults to `root@172.105.22.18`; configure the Linode firewall to
-allow TCP port `8080` to test at `http://172.105.22.18:8080`. Set
-`DEPLOY_PATH=/opt/propflow-dev` when running `deploy-dev.sh` if using a
-non-default path. This is an HTTP test deployment; do not use production
-credentials or real user data.
+Set `APP_DOMAIN=dev.negobrick.com` in `/opt/propflow-dev/.env.dev`. The script
+defaults to `root@172.105.22.18`; set `DEPLOY_PATH=/opt/propflow-dev` when
+running `deploy-dev.sh` if using a non-default path. This is an HTTP test
+deployment behind Nginx TLS; do not use production credentials or real user
+data.
 
 The deployment serves `/uploads` the same way the current backend does: uploaded
 KYC documents are publicly accessible by URL. Do not store real identity
@@ -120,7 +160,8 @@ it in production.
 ### Staging deployment without demo data
 
 The staging deployment uses its own Compose project, database/uploads volumes,
-and HTTP port `8081`. It does not run `npm run seed`, so the database starts
+and internal port `8081`, routed at `https://stg.negobrick.com`. It does not run
+`npm run seed`, so the database starts
 without demo members, listings, interests, or appointments. The backend still
 creates the configured admin account at startup; set a unique staging
 `ADMIN_EMAIL` and strong `ADMIN_PASSWORD` in `.env.staging`.
@@ -135,7 +176,7 @@ DEPLOY_PATH=/opt/propflow-staging bash initial-setup.sh
 Run `deploy-staging.sh` once to sync files and create
 `/opt/propflow-staging/.env.staging`; it stops before starting the app. Edit
 that file on the server to set a unique staging `JWT_SECRET` and admin
-credentials, then run the script again:
+credentials and set `APP_DOMAIN=stg.negobrick.com`, then run the script again:
 
 ```bash
 bash deploy-staging.sh
@@ -143,11 +184,10 @@ ssh root@172.105.22.18 'cd /opt/propflow-staging && nano .env.staging'
 bash deploy-staging.sh
 ```
 
-Allow inbound TCP port `8081` in the server firewall, then open
-`http://172.105.22.18:8081`. The script defaults to
-`/opt/propflow-staging`; set `DEPLOY_PATH` when using a different path. Staging
-data persists in its own Docker volumes between deployments. This is an HTTP
-test deployment; do not use production credentials or real user data.
+The script defaults to `/opt/propflow-staging`; set `DEPLOY_PATH` when using a
+different path. Staging data persists in its own Docker volumes between
+deployments. This is an HTTP test deployment behind Nginx TLS; do not use
+production credentials or real user data.
 
 ### Demo accounts (created by `npm run seed`)
 | Role | Email | Password |

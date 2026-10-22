@@ -6,6 +6,7 @@ DEPLOY_USER="${DEPLOY_USER:-root}"
 DEPLOY_PATH="${DEPLOY_PATH:-/opt/propflow}"
 SSH_PORT="${SSH_PORT:-22}"
 REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
+COMPOSE_FILES="-f compose.yaml -f compose.prod.yaml"
 
 if [[ ! "$DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
   echo "DEPLOY_PATH must be an absolute path containing only letters, digits, '.', '_', '/', or '-'" >&2
@@ -36,6 +37,7 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude '/.git/' \
     --exclude '/deploy.sh' \
     --exclude '/deploy-dev.sh' \
+    --exclude '/nginx-setup.sh' \
     --exclude '/initial-setup.sh' \
     --exclude '/.env' \
     --exclude '/.env.dev' \
@@ -56,6 +58,7 @@ else
     --exclude=.git \
     --exclude=deploy.sh \
     --exclude=deploy-dev.sh \
+    --exclude=nginx-setup.sh \
     --exclude=initial-setup.sh \
     --exclude=.env \
     --exclude=.env.dev \
@@ -89,6 +92,6 @@ fi
 
 echo "Building and restarting the application..."
 ssh -p "$SSH_PORT" "$REMOTE" \
-  "cd '$DEPLOY_PATH' && chmod 600 .env && docker compose up -d --build --remove-orphans && docker compose ps"
+  "cd '$DEPLOY_PATH' && chmod 600 .env && docker compose -p propflow --env-file .env $COMPOSE_FILES up -d --build --remove-orphans && docker compose -p propflow --env-file .env $COMPOSE_FILES ps"
 
 echo "Deployment complete."

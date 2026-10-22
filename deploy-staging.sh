@@ -40,6 +40,7 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude '/deploy.sh' \
     --exclude '/deploy-dev.sh' \
     --exclude '/deploy-staging.sh' \
+    --exclude '/nginx-setup.sh' \
     --exclude '/initial-setup.sh' \
     --exclude '/.env' \
     --exclude '/.env.dev' \
@@ -61,6 +62,7 @@ else
     --exclude=deploy.sh \
     --exclude=deploy-dev.sh \
     --exclude=deploy-staging.sh \
+    --exclude=nginx-setup.sh \
     --exclude=initial-setup.sh \
     --exclude=.env \
     --exclude=.env.dev \
@@ -100,4 +102,4 @@ echo "Checking staging services..."
 ssh -p "$SSH_PORT" "$REMOTE" \
   "cd '$DEPLOY_PATH' && docker compose -p '$COMPOSE_PROJECT' $COMPOSE_ENV $COMPOSE_FILES ps"
 
-echo "Staging deployment ready at http://$DEPLOY_HOST:8081"
+echo "Staging deployment ready at https://stg.negobrick.com"

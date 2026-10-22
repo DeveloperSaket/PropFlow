@@ -1,0 +1,8 @@
+services:
+  backend:
+    environment:
+      CORS_ORIGIN: https://${APP_DOMAIN},https://www.negobrick.com
+
+  frontend:
+    ports:
+      - "127.0.0.1:8082:80"

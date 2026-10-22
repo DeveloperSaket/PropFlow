@@ -1,12 +1,8 @@
 services:
   backend:
     environment:
-      CORS_ORIGIN: http://${APP_DOMAIN}:8080
+      CORS_ORIGIN: https://${APP_DOMAIN}
 
   frontend:
     ports:
-      - "8080:80"
-
-  caddy:
-    profiles:
-      - production
+      - "127.0.0.1:8080:80"
