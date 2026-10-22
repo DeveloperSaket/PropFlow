@@ -1,9 +1,11 @@
 services:
   backend:
     environment:
-      CORS_ORIGIN: https://${APP_DOMAIN}
+      CORS_ORIGIN: https://${APP_DOMAIN},http://${IP_TEST_HOST:-172.105.22.18}:8080
 
   frontend:
+    ports:
+      - "8080:80"
     networks:
       default: {}
       propflow-proxy:

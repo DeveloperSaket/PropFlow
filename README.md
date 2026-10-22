@@ -98,8 +98,24 @@ domains:
 All frontend containers join a shared Docker network that is not published to
 the host. Caddy proxies to the matching frontend's Nginx container over that
 network; the frontend Nginx serves the SPA and forwards `/api/` and `/uploads/`
-to its own backend. The backends and databases remain isolated in their
-environment-specific Compose projects and volumes.
+to its own backend. Dev, staging, and PPE also publish separate HTTP ports for
+direct IP testing: `8080`, `8081`, and `8082` respectively. Production has no
+direct host port and is reached through Caddy. The backends and databases
+remain isolated in their environment-specific Compose projects and volumes.
+
+For IP-based testing without DNS configured, use:
+
+| Environment | Direct HTTP test URL |
+|-------------|----------------------|
+| Dev | `http://172.105.22.18:8080` |
+| Staging | `http://172.105.22.18:8081` |
+| PPE | `http://172.105.22.18:8082` |
+
+These ports are published on the server's network interfaces and are plain
+HTTP. Allow them through the firewall only while needed; ideally restrict
+access to your IP address. Set `IP_TEST_HOST` in each environment's `.env` file
+if the server's public IP differs from `172.105.22.18`. The host-port mappings
+do not change Caddy's ports or hostname-based HTTPS routing.
 
 The first deployment creates the shared `propflow-proxy` Docker network. Deploy
 production with `deploy.sh` to start Caddy; deploy the other environments with
@@ -112,7 +128,8 @@ the production Compose volumes across container restarts.
 The dev deployment uses its own Compose project and database/uploads volumes.
 It runs `npm run seed` inside the backend container only on the first
 deployment, so ordinary redeployments preserve test changes and do not add
-duplicate demo appointments. It is available at `https://dev.negobrick.com`.
+duplicate demo appointments. It is available at `https://dev.negobrick.com` or
+for direct HTTP testing at `http://172.105.22.18:8080`.
 To deliberately reset dev data, remove the `propflow-dev` Docker volumes before
 redeploying; this permanently deletes dev test data. Use the demo member
 accounts listed below; the dev admin credentials are the `ADMIN_EMAIL` and
@@ -152,7 +169,8 @@ it in production.
 ### Staging deployment with demo data
 
 The staging deployment uses its own Compose project, database/uploads volumes,
-and the same seed script as dev. It is available at `https://stg.negobrick.com`.
+and the same seed script as dev. It is available at `https://stg.negobrick.com`
+or for direct HTTP testing at `http://172.105.22.18:8081`.
 The seed runs only on the first deployment, creating demo members, listings,
 interests, and appointments. Set a unique staging `ADMIN_EMAIL` and strong
 `ADMIN_PASSWORD` in `.env.staging`; don't use production credentials here.
@@ -183,8 +201,9 @@ staging data and allow the seed to run again.
 ### PPE deployment without demo data
 
 PPE (pre-production) uses the production Compose services and Nginx frontend
-image, but has its own project, environment file, database, uploads, and
-`https://ppe.negobrick.com` hostname. It does not run `npm run seed`; startup
+image, but has its own project, environment file, database, uploads,
+`https://ppe.negobrick.com` hostname, and direct HTTP test URL
+`http://172.105.22.18:8082`. It does not run `npm run seed`; startup
 creates only the configured PPE admin account. This is intended for final
 release checks with production-like configuration, not production data.
 
