@@ -39,11 +39,13 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude '/.git/' \
     --exclude '/deploy.sh' \
     --exclude '/deploy-dev.sh' \
-    --exclude '/nginx-setup.sh' \
+    --exclude '/deploy-staging.sh' \
+    --exclude '/deploy-ppe.sh' \
     --exclude '/initial-setup.sh' \
     --exclude '/.env' \
     --exclude '/.env.dev' \
     --exclude '/.env.staging' \
+    --exclude '/.env.ppe' \
     --exclude '/node_modules/' \
     --exclude '/backend/.env' \
     --exclude '/backend/data/' \
@@ -60,11 +62,13 @@ else
     --exclude=.git \
     --exclude=deploy.sh \
     --exclude=deploy-dev.sh \
-    --exclude=nginx-setup.sh \
+    --exclude=deploy-staging.sh \
+    --exclude=deploy-ppe.sh \
     --exclude=initial-setup.sh \
     --exclude=.env \
     --exclude=.env.dev \
     --exclude=.env.staging \
+    --exclude=.env.ppe \
     --exclude=node_modules \
     --exclude=backend/.env \
     --exclude=backend/data \
@@ -93,6 +97,8 @@ if ssh -p "$SSH_PORT" "$REMOTE" \
 fi
 
 echo "Building and starting the isolated development stack..."
+ssh -p "$SSH_PORT" "$REMOTE" \
+  "docker network inspect propflow-proxy >/dev/null 2>&1 || docker network create propflow-proxy"
 ssh -p "$SSH_PORT" "$REMOTE" \
   "cd '$DEPLOY_PATH' && chmod 600 .env.dev && docker compose -p '$COMPOSE_PROJECT' $COMPOSE_ENV $COMPOSE_FILES up -d --build --remove-orphans --wait --wait-timeout 120"
 

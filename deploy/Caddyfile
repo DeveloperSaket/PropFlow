@@ -1,0 +1,31 @@
+{
+    email {$LETSENCRYPT_EMAIL}
+}
+
+negobrick.com, www.negobrick.com {
+    encode zstd gzip
+    reverse_proxy propflow-production:80 {
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+dev.negobrick.com {
+    encode zstd gzip
+    reverse_proxy propflow-dev:80 {
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+stg.negobrick.com {
+    encode zstd gzip
+    reverse_proxy propflow-staging:80 {
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+ppe.negobrick.com {
+    encode zstd gzip
+    reverse_proxy propflow-ppe:80 {
+        header_up X-Real-IP {remote_host}
+    }
+}

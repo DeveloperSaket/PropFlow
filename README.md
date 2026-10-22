@@ -33,15 +33,20 @@ Then open **http://localhost:5173**.
 
 ## Deploy to Linode
 
-This repository deploys the application stacks with Docker Compose and uses
-host Nginx with Certbot-managed HTTPS to route traffic. Use an Ubuntu or Debian
-Linode and configure root SSH access. The initial setup script installs Docker
-Engine and the Compose plugin, then syncs the project files to the server. It
-does not start the application. Point DNS `A` records for
-`negobrick.com`, `www.negobrick.com`, `dev.negobrick.com`, and `stg.negobrick.com`
-to the Linode before configuring Nginx. Only add `AAAA` records if the server
-is reachable over IPv6. Allow inbound TCP ports 80 and 443 in the Linode
-firewall.
+This repository uses Docker Compose, Caddy, and Nginx for deployment. Caddy is
+the public edge proxy: it routes the production, dev, staging, and PPE hostnames
+and automatically obtains and renews HTTPS certificates. Nginx runs inside
+each frontend container to serve the built frontend and proxy API and uploads
+requests to that environment's backend. No host-level Nginx or Certbot
+installation is required.
+
+Use an Ubuntu or Debian Linode and configure root SSH access. The initial setup
+script installs Docker Engine and the Compose plugin, then syncs the project
+files to the server. It does not start the application. Point DNS `A` records
+for `negobrick.com`, `www.negobrick.com`, `dev.negobrick.com`,
+`stg.negobrick.com`, and `ppe.negobrick.com` to the Linode. Only add `AAAA`
+records if the server is reachable over IPv6. Allow inbound TCP ports 80 and
+443 in the Linode firewall.
 
 ```bash
 bash initial-setup.sh
@@ -49,9 +54,10 @@ bash initial-setup.sh
 
 The script defaults to `root@172.105.22.18`. It requires local Bash, `ssh`, and
 `tar`; if `rsync` is installed, it uses it instead. The server needs internet
-access for package installation and Docker image builds. After setup, set
-`APP_DOMAIN`, a unique long `JWT_SECRET`, and a strong `ADMIN_PASSWORD` in the
-server's private `.env`:
+access for package installation, Docker image builds, and Caddy's certificate
+issuance. After setup, set `APP_DOMAIN=negobrick.com`, a unique long
+`JWT_SECRET`, a strong `ADMIN_PASSWORD`, and a notification
+`LETSENCRYPT_EMAIL` in the server's private `.env`:
 
 ```bash
 ssh root@172.105.22.18 'cd /opt/propflow && nano .env'
@@ -62,7 +68,7 @@ its admin user on first startup. Existing accounts and uploads persist in Docker
 volumes across deployments.
 
 Once the server is prepared and `.env` is configured, deploy (or redeploy) from
-a Bash environment:
+a Bash environment. This starts the production app and Caddy:
 
 ```bash
 bash deploy.sh
@@ -74,56 +80,43 @@ scripts transfer the project as a compressed tar stream over SSH instead.
 The script defaults to `root@172.105.22.18`. Override with `DEPLOY_HOST` and/or
 `DEPLOY_USER` if needed. Optional settings: `DEPLOY_PATH` (defaults to
 `/opt/propflow`) and `SSH_PORT` (defaults to `22`). To review the running
-services and logs, use `ssh root@172.105.22.18 'cd /opt/propflow && docker compose ps'`
-and `ssh root@172.105.22.18 'cd /opt/propflow && docker compose logs -f'`.
+services and logs, use `ssh root@172.105.22.18 'cd /opt/propflow && docker compose --profile edge -p propflow --env-file .env -f compose.yaml -f compose.prod.yaml ps'`
+and `ssh root@172.105.22.18 'cd /opt/propflow && docker compose --profile edge -p propflow --env-file .env -f compose.yaml -f compose.prod.yaml logs -f caddy'`.
 
-### Nginx routing and HTTPS
+### Caddy and Nginx routing
 
-Production is published to `127.0.0.1:8082`, development to
-`127.0.0.1:8080`, and staging to `127.0.0.1:8081`. These ports are only
-available locally on the server; host Nginx routes the public domains to them:
+Caddy binds public ports 80 and 443 and automatically manages HTTPS for these
+domains:
 
 | Hostname | Stack |
 |----------|-------|
 | `negobrick.com`, `www.negobrick.com` | Production |
 | `dev.negobrick.com` | Development |
 | `stg.negobrick.com` | Staging |
+| `ppe.negobrick.com` | PPE (pre-production) |
 
-Set `APP_DOMAIN=negobrick.com` in `/opt/propflow/.env`,
-`APP_DOMAIN=dev.negobrick.com` in `/opt/propflow-dev/.env.dev`, and
-`APP_DOMAIN=stg.negobrick.com` in `/opt/propflow-staging/.env.staging`. Deploy
-each stack with its deploy script before running `nginx-setup.sh`; this also
-removes the old production Caddy container so ports 80 and 443 are free. The
-script installs host Nginx and Certbot, configures the routes, obtains
-Let's Encrypt certificates for all four hostnames, and enables automatic
-certificate renewal. It requires DNS to resolve to the server and ports 80/443
-to be reachable. Existing unrelated Nginx sites are left in place.
+All frontend containers join a shared Docker network that is not published to
+the host. Caddy proxies to the matching frontend's Nginx container over that
+network; the frontend Nginx serves the SPA and forwards `/api/` and `/uploads/`
+to its own backend. The backends and databases remain isolated in their
+environment-specific Compose projects and volumes.
 
-Run from Bash on the deployment machine:
-
-```bash
-LETSENCRYPT_EMAIL=admin@negobrick.com bash nginx-setup.sh
-```
-
-The script defaults to `root@172.105.22.18`; set `DEPLOY_HOST`, `DEPLOY_USER`,
-or `SSH_PORT` to override those connection settings. Check the host-side
-configuration and service on the Linode with:
-
-```bash
-ssh root@172.105.22.18 'sudo nginx -t && sudo systemctl status nginx --no-pager'
-ssh root@172.105.22.18 'sudo nginx -T'
-```
+The first deployment creates the shared `propflow-proxy` Docker network. Deploy
+production with `deploy.sh` to start Caddy; deploy the other environments with
+their scripts. Caddy requests certificates when the configured domains resolve
+to the server and ports 80 and 443 are reachable. Certificate data persists in
+the production Compose volumes across container restarts.
 
 ### Development deployment with demo data
 
-The dev deployment uses its own Compose project, database/uploads volumes, and
-internal port `8080`; host Nginx exposes it at `https://dev.negobrick.com`. It
-runs the existing `npm run seed` inside the backend container only on the first
-deployment, so normal redeployments preserve test changes and do not add
-duplicate demo appointments. To deliberately reset dev data, remove the
-`propflow-dev` Docker volumes before redeploying; this permanently deletes dev
-test data. Use the demo member accounts listed below; the dev admin credentials
-are the `ADMIN_EMAIL` and `ADMIN_PASSWORD` values in `.env.dev`.
+The dev deployment uses its own Compose project and database/uploads volumes.
+It runs `npm run seed` inside the backend container only on the first
+deployment, so ordinary redeployments preserve test changes and do not add
+duplicate demo appointments. It is available at `https://dev.negobrick.com`.
+To deliberately reset dev data, remove the `propflow-dev` Docker volumes before
+redeploying; this permanently deletes dev test data. Use the demo member
+accounts listed below; the dev admin credentials are the `ADMIN_EMAIL` and
+`ADMIN_PASSWORD` values in `.env.dev`.
 
 On a fresh Linode, initialize the dev path once (Docker installation is shared
 with production):
@@ -145,9 +138,8 @@ bash deploy-dev.sh
 
 Set `APP_DOMAIN=dev.negobrick.com` in `/opt/propflow-dev/.env.dev`. The script
 defaults to `root@172.105.22.18`; set `DEPLOY_PATH=/opt/propflow-dev` when
-running `deploy-dev.sh` if using a non-default path. This is an HTTP test
-deployment behind Nginx TLS; do not use production credentials or real user
-data.
+running `deploy-dev.sh` if using a non-default path. Do not use production
+credentials or real user data.
 
 The deployment serves `/uploads` the same way the current backend does: uploaded
 KYC documents are publicly accessible by URL. Do not store real identity
@@ -157,14 +149,13 @@ Firebase web configuration and backend Application Default Credentials; those
 credentials must be securely mounted into the backend container before enabling
 it in production.
 
-### Staging deployment without demo data
+### Staging deployment with demo data
 
 The staging deployment uses its own Compose project, database/uploads volumes,
-and internal port `8081`, routed at `https://stg.negobrick.com`. It does not run
-`npm run seed`, so the database starts
-without demo members, listings, interests, or appointments. The backend still
-creates the configured admin account at startup; set a unique staging
-`ADMIN_EMAIL` and strong `ADMIN_PASSWORD` in `.env.staging`.
+and the same seed script as dev. It is available at `https://stg.negobrick.com`.
+The seed runs only on the first deployment, creating demo members, listings,
+interests, and appointments. Set a unique staging `ADMIN_EMAIL` and strong
+`ADMIN_PASSWORD` in `.env.staging`; don't use production credentials here.
 
 On a fresh server, initialize the staging path once (Docker installation is
 shared with other deployments):
@@ -176,7 +167,7 @@ DEPLOY_PATH=/opt/propflow-staging bash initial-setup.sh
 Run `deploy-staging.sh` once to sync files and create
 `/opt/propflow-staging/.env.staging`; it stops before starting the app. Edit
 that file on the server to set a unique staging `JWT_SECRET` and admin
-credentials and set `APP_DOMAIN=stg.negobrick.com`, then run the script again:
+credentials, set `APP_DOMAIN=stg.negobrick.com`, then run the script again:
 
 ```bash
 bash deploy-staging.sh
@@ -186,8 +177,35 @@ bash deploy-staging.sh
 
 The script defaults to `/opt/propflow-staging`; set `DEPLOY_PATH` when using a
 different path. Staging data persists in its own Docker volumes between
-deployments. This is an HTTP test deployment behind Nginx TLS; do not use
-production credentials or real user data.
+deployments. Remove those volumes only when you intentionally want to erase
+staging data and allow the seed to run again.
+
+### PPE deployment without demo data
+
+PPE (pre-production) uses the production Compose services and Nginx frontend
+image, but has its own project, environment file, database, uploads, and
+`https://ppe.negobrick.com` hostname. It does not run `npm run seed`; startup
+creates only the configured PPE admin account. This is intended for final
+release checks with production-like configuration, not production data.
+
+On a fresh server, initialize the PPE path once:
+
+```bash
+DEPLOY_PATH=/opt/propflow-ppe bash initial-setup.sh
+```
+
+Run `deploy-ppe.sh` once to create `/opt/propflow-ppe/.env.ppe` and stop. Set
+`APP_DOMAIN=ppe.negobrick.com`, a unique `JWT_SECRET`, and PPE-only admin
+credentials, then deploy again:
+
+```bash
+bash deploy-ppe.sh
+ssh root@172.105.22.18 'cd /opt/propflow-ppe && nano .env.ppe'
+bash deploy-ppe.sh
+```
+
+PPE data persists independently in its own Docker volumes. Do not connect PPE
+to the production database or reuse production secrets.
 
 ### Demo accounts (created by `npm run seed`)
 | Role | Email | Password |

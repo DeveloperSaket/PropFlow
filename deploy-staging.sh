@@ -40,11 +40,12 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude '/deploy.sh' \
     --exclude '/deploy-dev.sh' \
     --exclude '/deploy-staging.sh' \
-    --exclude '/nginx-setup.sh' \
+    --exclude '/deploy-ppe.sh' \
     --exclude '/initial-setup.sh' \
     --exclude '/.env' \
     --exclude '/.env.dev' \
     --exclude '/.env.staging' \
+    --exclude '/.env.ppe' \
     --exclude '/node_modules/' \
     --exclude '/backend/.env' \
     --exclude '/backend/data/' \
@@ -62,11 +63,12 @@ else
     --exclude=deploy.sh \
     --exclude=deploy-dev.sh \
     --exclude=deploy-staging.sh \
-    --exclude=nginx-setup.sh \
+    --exclude=deploy-ppe.sh \
     --exclude=initial-setup.sh \
     --exclude=.env \
     --exclude=.env.dev \
     --exclude=.env.staging \
+    --exclude=.env.ppe \
     --exclude=node_modules \
     --exclude=backend/.env \
     --exclude=backend/data \
@@ -96,10 +98,12 @@ fi
 
 echo "Building and starting the isolated staging stack..."
 ssh -p "$SSH_PORT" "$REMOTE" \
+  "docker network inspect propflow-proxy >/dev/null 2>&1 || docker network create propflow-proxy"
+ssh -p "$SSH_PORT" "$REMOTE" \
   "cd '$DEPLOY_PATH' && chmod 600 .env.staging && docker compose -p '$COMPOSE_PROJECT' $COMPOSE_ENV $COMPOSE_FILES up -d --build --remove-orphans --wait --wait-timeout 120"
 
-echo "Checking staging services..."
+echo "Seeding staging sample data on first deployment..."
 ssh -p "$SSH_PORT" "$REMOTE" \
-  "cd '$DEPLOY_PATH' && docker compose -p '$COMPOSE_PROJECT' $COMPOSE_ENV $COMPOSE_FILES ps"
+  "cd '$DEPLOY_PATH' && docker compose -p '$COMPOSE_PROJECT' $COMPOSE_ENV $COMPOSE_FILES exec -T backend sh -c 'if [ ! -f /app/data/.propflow-staging-seeded ]; then npm run seed && touch /app/data/.propflow-staging-seeded; fi' && docker compose -p '$COMPOSE_PROJECT' $COMPOSE_ENV $COMPOSE_FILES ps"
 
 echo "Staging deployment ready at https://stg.negobrick.com"

@@ -1,0 +1,11 @@
+services:
+  backend:
+    environment:
+      CORS_ORIGIN: https://${APP_DOMAIN}
+
+  frontend:
+    networks:
+      default: {}
+      propflow-proxy:
+        aliases:
+          - propflow-ppe

@@ -37,11 +37,13 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude '/.git/' \
     --exclude '/deploy.sh' \
     --exclude '/deploy-dev.sh' \
-    --exclude '/nginx-setup.sh' \
+    --exclude '/deploy-staging.sh' \
+    --exclude '/deploy-ppe.sh' \
     --exclude '/initial-setup.sh' \
     --exclude '/.env' \
     --exclude '/.env.dev' \
     --exclude '/.env.staging' \
+    --exclude '/.env.ppe' \
     --exclude '/node_modules/' \
     --exclude '/backend/.env' \
     --exclude '/backend/data/' \
@@ -58,11 +60,13 @@ else
     --exclude=.git \
     --exclude=deploy.sh \
     --exclude=deploy-dev.sh \
-    --exclude=nginx-setup.sh \
+    --exclude=deploy-staging.sh \
+    --exclude=deploy-ppe.sh \
     --exclude=initial-setup.sh \
     --exclude=.env \
     --exclude=.env.dev \
     --exclude=.env.staging \
+    --exclude=.env.ppe \
     --exclude=node_modules \
     --exclude=backend/.env \
     --exclude=backend/data \
@@ -85,13 +89,15 @@ if ! ssh -p "$SSH_PORT" "$REMOTE" \
 fi
 
 if ssh -p "$SSH_PORT" "$REMOTE" \
-  "cd '$DEPLOY_PATH' && grep -Eq '^(APP_DOMAIN=propflow\.example\.com|JWT_SECRET=replace-with-a-long-random-secret|ADMIN_PASSWORD=replace-with-a-unique-strong-password)$' .env"; then
-  echo "Replace the example domain, JWT secret, and admin password in $DEPLOY_PATH/.env before deploying." >&2
+  "cd '$DEPLOY_PATH' && grep -Eq '^(APP_DOMAIN=propflow\.example\.com|JWT_SECRET=replace-with-a-long-random-secret|ADMIN_PASSWORD=replace-with-a-unique-strong-password|LETSENCRYPT_EMAIL=replace-with-a-valid-email@example\.com)$' .env"; then
+  echo "Replace the example domain, JWT secret, admin password, and Let's Encrypt email in $DEPLOY_PATH/.env before deploying." >&2
   exit 1
 fi
 
 echo "Building and restarting the application..."
 ssh -p "$SSH_PORT" "$REMOTE" \
-  "cd '$DEPLOY_PATH' && chmod 600 .env && docker compose -p propflow --env-file .env $COMPOSE_FILES up -d --build --remove-orphans && docker compose -p propflow --env-file .env $COMPOSE_FILES ps"
+  "docker network inspect propflow-proxy >/dev/null 2>&1 || docker network create propflow-proxy"
+ssh -p "$SSH_PORT" "$REMOTE" \
+  "cd '$DEPLOY_PATH' && chmod 600 .env && docker compose --profile edge -p propflow --env-file .env $COMPOSE_FILES up -d --build --remove-orphans && docker compose --profile edge -p propflow --env-file .env $COMPOSE_FILES ps"
 
 echo "Deployment complete."

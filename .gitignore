@@ -6,3 +6,4 @@ frontend/dist
 .env
 .env.dev
 .env.staging
+.env.ppe

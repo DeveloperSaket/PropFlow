@@ -79,11 +79,13 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude '/.git/' \
     --exclude '/deploy.sh' \
     --exclude '/deploy-dev.sh' \
-    --exclude '/nginx-setup.sh' \
+    --exclude '/deploy-staging.sh' \
+    --exclude '/deploy-ppe.sh' \
     --exclude '/initial-setup.sh' \
     --exclude '/.env' \
     --exclude '/.env.dev' \
     --exclude '/.env.staging' \
+    --exclude '/.env.ppe' \
     --exclude '/node_modules/' \
     --exclude '/backend/.env' \
     --exclude '/backend/data/' \
@@ -100,11 +102,13 @@ else
     --exclude=.git \
     --exclude=deploy.sh \
     --exclude=deploy-dev.sh \
-    --exclude=nginx-setup.sh \
+    --exclude=deploy-staging.sh \
+    --exclude=deploy-ppe.sh \
     --exclude=initial-setup.sh \
     --exclude=.env \
     --exclude=.env.dev \
     --exclude=.env.staging \
+    --exclude=.env.ppe \
     --exclude=node_modules \
     --exclude=backend/.env \
     --exclude=backend/data \
