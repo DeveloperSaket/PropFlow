@@ -7,7 +7,7 @@ import Chat from '../components/Chat/index.jsx';
 import { db } from '../firebase/index.js';
 import { getUnreadChatCount, listenToBuyerChatRooms } from '../firebase/chat.js';
 export default function BuyerDashboard() {
-  const { user } = useAuth();
+  const { user, chatAvailable, firebaseError } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState(() => searchParams.get('tab') === 'chats' ? 'chats' : 'overview');
   const [interests, setInterests] = useState(null);
@@ -25,13 +25,18 @@ export default function BuyerDashboard() {
     setTab(searchParams.get('tab') === 'chats' ? 'chats' : 'overview');
   }, [searchParams]);
   useEffect(() => {
+    if (!chatAvailable || !db) {
+      setChatRooms([]);
+      setChatRoomsError(firebaseError);
+      return undefined;
+    }
     try {
       return listenToBuyerChatRooms(db, user.id, setChatRooms, (error) => setChatRoomsError(error.message));
     } catch (error) {
       setChatRoomsError(error.message);
       setChatRooms([]);
     }
-  }, [user.id]);
+  }, [user.id, chatAvailable, firebaseError]);
   const chatPropertyIds = chatRooms?.map((room) => room.product_id).join(',') || '';
   useEffect(() => {
     if (!chatRooms?.length) {
@@ -147,10 +152,14 @@ export default function BuyerDashboard() {
       </>}
       {tab === 'chats' && (
         <>
-          {chatRoomsError && <div className="alert error">{chatRoomsError}</div>}
-          {chatRooms === null ? <Spinner /> : chatRooms.length === 0 ? (
+          {!chatAvailable ? (
+            <div className="alert info">{firebaseError || 'Chat is unavailable because Firebase is not configured.'}</div>
+          ) : chatRoomsError ? (
+            <div className="alert error">{chatRoomsError}</div>
+          ) : null}
+          {chatAvailable && chatRooms === null ? <Spinner /> : chatAvailable && chatRooms.length === 0 ? (
             <p className="muted">No conversations yet. <Link to="/browse">Browse properties</Link> to contact a seller.</p>
-          ) : (
+          ) : chatAvailable && (
             <div className="table-wrap card p-0">
               <table>
                 <thead><tr><th>Property</th><th>Seller</th><th>Last message</th><th>Updated</th><th>Status</th><th></th></tr></thead>
@@ -176,7 +185,7 @@ export default function BuyerDashboard() {
               </table>
             </div>
           )}
-          {activeChatRoom && (
+          {chatAvailable && activeChatRoom && (
             <div className="mt-20">
               <Chat
                 db={db}

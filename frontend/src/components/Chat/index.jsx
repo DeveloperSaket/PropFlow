@@ -23,6 +23,11 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 		let active = true;
 
 		async function initializeChat() {
+			if (!db) {
+				setError(firebaseError || 'Chat is unavailable because Firebase is not configured.');
+				setLoading(false);
+				return;
+			}
 			setLoading(true);
 			setError('');
 			try {
@@ -45,7 +50,7 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 			active = false;
 			unsubscribe?.();
 		};
-	}, [db, buyerId, sellerId, productId]);
+	}, [db, buyerId, sellerId, productId, firebaseError]);
 
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
