@@ -8,7 +8,7 @@ import { db } from '../firebase/index.js';
 import { getPropertyTypeLabel } from '../constants/propertyTypes.js';
 export default function PropertyDetail() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, chatAvailable, firebaseError } = useAuth();
   const nav = useNavigate();
   const [p, setP] = useState(null);
   const [msg, setMsg] = useState('');
@@ -121,13 +121,17 @@ export default function PropertyDetail() {
       )}
       {p.status === 'approved' && user && user.role !== 'admin' && user.id !== p.seller_id && (
         <div className="mt-20">
-          <Chat
-            db={db}
-            currentUserId={user.id}
-            buyerId={user.id}
-            sellerId={p.seller_id}
-            productId={p.id}
-          />
+          {chatAvailable ? (
+            <Chat
+              db={db}
+              currentUserId={user.id}
+              buyerId={user.id}
+              sellerId={p.seller_id}
+              productId={p.id}
+            />
+          ) : (
+            <Alert type="info">{firebaseError || 'Chat is unavailable because Firebase is not configured.'}</Alert>
+          )}
         </div>
       )}
     </div>

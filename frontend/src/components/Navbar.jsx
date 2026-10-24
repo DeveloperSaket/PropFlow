@@ -6,13 +6,13 @@ import { getUnreadChatCount, listenToBuyerChatRooms, listenToSellerChatRooms } f
 import './Navbar.scss';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, chatAvailable } = useAuth();
   const nav = useNavigate();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!user || user.role === 'admin') {
+    if (!user || user.role === 'admin' || !chatAvailable || !db) {
       setUnreadChatCount(0);
       return undefined;
     }
@@ -45,7 +45,7 @@ export default function Navbar() {
       setUnreadChatCount(0);
       return undefined;
     }
-  }, [user?.id, user?.role]);
+  }, [user?.id, user?.role, chatAvailable]);
 
   const doLogout = () => { logout(); nav('/'); };
 
@@ -69,7 +69,7 @@ export default function Navbar() {
           <NavLink to="/browse">Browse</NavLink>
           {user && user.role !== 'admin' && <NavLink to="/buyer">Buying</NavLink>}
           {user && user.role !== 'admin' && <NavLink to="/seller" end>Selling</NavLink>}
-          {user && user.role !== 'admin' && (
+          {user && user.role !== 'admin' && chatAvailable && (
             <NavLink to="/chats">
               Chats{unreadChatCount > 0 && <span className="nav-unread" aria-label={`${unreadChatCount} unread chats`}>{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>}
             </NavLink>

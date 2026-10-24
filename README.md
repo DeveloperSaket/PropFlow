@@ -61,9 +61,16 @@ Regular accounts are stored as `member` and can both buy and list properties. Ad
 1. In Firebase Console, enable **Authentication** and create the **Cloud Firestore** database.
 2. Add the Firebase web app settings to `frontend/.env.local` using the `VITE_FIREBASE_*` names. Never put a service-account key in frontend files.
 3. For local backend development, create a service-account key in **Project settings → Service accounts**. Store its JSON outside this repository and set `GOOGLE_APPLICATION_CREDENTIALS` in `backend/.env`. In production, use the hosting platform's Application Default Credentials where possible.
+
 4. Set `FIREBASE_PROJECT_ID` in `backend/.env`. The backend exchanges the existing API JWT identity for a Firebase custom token at `GET /api/auth/firebase-token`; Firebase UIDs are the string form of PropFlow user IDs.
 5. Publish the participant-only Firestore rules from the repository root with `npx firebase-tools deploy --only firestore:rules --project <your-project-id>`.
 6. Restart the app with `npm run dev`. Firebase sign-in runs after API login, registration, and session restoration. Chat IDs are stored as strings and message/room-summary writes are atomic.
+
+Firebase chat is optional. If the web configuration is missing, invalid, or
+Firebase authentication cannot connect, the app displays chat as unavailable
+while the rest of the app and its backend-based login continue to work. Firebase
+web settings are embedded in the frontend at build time, so rebuild and redeploy
+the frontend after changing them.
 
 The backend service account is privileged. Keep it out of source control, frontend files, logs, and client responses. `.env.local` and `backend/.env` are ignored by Git.
 ---

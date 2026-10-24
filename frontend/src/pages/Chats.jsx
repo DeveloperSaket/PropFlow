@@ -13,7 +13,7 @@ import {
 } from '../firebase/chat.js';
 
 export default function Chats() {
-  const { user } = useAuth();
+  const { user, chatAvailable, firebaseError } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const view = searchParams.get('view') === 'seller' ? 'seller' : 'buyer';
   const [buyerRooms, setBuyerRooms] = useState(null);
@@ -26,6 +26,13 @@ export default function Chats() {
   const [sellerError, setSellerError] = useState('');
 
   useEffect(() => {
+    if (!chatAvailable || !db) {
+      setBuyerRooms([]);
+      setSellerRooms([]);
+      setBuyerError(firebaseError);
+      setSellerError(firebaseError);
+      return undefined;
+    }
     let unsubscribeBuyer;
     let unsubscribeSeller;
     try {
@@ -63,7 +70,7 @@ export default function Chats() {
       unsubscribeBuyer?.();
       unsubscribeSeller?.();
     };
-  }, [user.id]);
+  }, [user.id, chatAvailable, firebaseError]);
 
   useEffect(() => {
     api.get('/interests/mine')
@@ -149,6 +156,17 @@ export default function Chats() {
     setActiveChatKey(null);
     setSearchParams(nextView === 'buyer' ? {} : { view: nextView }, { replace: true });
   };
+
+  if (!chatAvailable) {
+    return (
+      <div className="container">
+        <h1 className="page-title">Chats</h1>
+        <div className="alert info" role="status">
+          {firebaseError || 'Chat is unavailable because Firebase is not configured for this deployment.'}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container">

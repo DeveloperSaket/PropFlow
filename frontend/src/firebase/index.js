@@ -1,4 +1,3 @@
-// Replace this placeholder with the Firebase app initialization and Firestore instance.
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -10,7 +9,21 @@ const config = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = getApps().length ? getApp() : initializeApp(config);
+const hasFirebaseConfig = Object.values(config).every((value) => Boolean(value?.trim()));
+let auth = null;
+let db = null;
+let firebaseError = hasFirebaseConfig
+  ? ''
+  : 'Chat is unavailable because Firebase is not configured for this deployment.';
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+if (hasFirebaseConfig) {
+  try {
+    const app = getApps().length ? getApp() : initializeApp(config);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  } catch (error) {
+    firebaseError = `Chat is unavailable because Firebase could not initialize: ${error.message}`;
+  }
+}
+
+export { auth, db, firebaseError };
