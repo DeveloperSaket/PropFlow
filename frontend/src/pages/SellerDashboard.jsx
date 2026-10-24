@@ -7,7 +7,7 @@ import Chat from '../components/Chat/index.jsx';
 import { db } from '../firebase/index.js';
 import { getUnreadChatCount, listenToSellerChatRooms } from '../firebase/chat.js';
 export default function SellerDashboard() {
-  const { user } = useAuth();
+  const { user, chatAvailable, firebaseError } = useAuth();
   const nav = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState(() => searchParams.get('tab') || 'listings');
@@ -29,6 +29,11 @@ export default function SellerDashboard() {
   }, [searchParams]);
   useEffect(load, []);
   useEffect(() => {
+    if (!chatAvailable || !db) {
+      setChatRooms([]);
+      setChatRoomsError(firebaseError);
+      return undefined;
+    }
     try {
       return listenToSellerChatRooms(
         db,
@@ -46,7 +51,7 @@ export default function SellerDashboard() {
       setChatRoomsError(error.message);
       setChatRooms([]);
     }
-  }, [user.id]);
+  }, [user.id, chatAvailable, firebaseError]);
   const del = async (id) => {
     if (!confirm('Delete this listing?')) return;
     await api.del(`/properties/${id}`);
@@ -118,7 +123,7 @@ export default function SellerDashboard() {
         <Stat num={leads.length} label="Buyer leads" color="var(--brand)" />
       </div>
       <div className="tabs">
-        {['listings', 'leads', 'viewings', 'chats'].map((t) => (
+        {['listings', 'leads', 'viewings', ...(chatAvailable ? ['chats'] : [])].map((t) => (
           <div key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => selectTab(t)}>
             {t === 'listings' ? 'My Listings' : t === 'leads' ? `Leads (${leads.length})` : t === 'viewings' ? `Viewings (${appts.length})` : `Chats (${chatRooms?.length ?? 0})${unreadChatCount ? ` · ${unreadChatCount} new` : ''}`}
           </div>
@@ -172,10 +177,10 @@ export default function SellerDashboard() {
                         <option value="negotiating">negotiating</option>
                         <option value="closed">closed</option>
                       </select>
-                      <button className="btn small mt-10" onClick={() => setOpenChatLead(openChatLead === l.id ? null : l.id)}>
+                      {chatAvailable && <button className="btn small mt-10" onClick={() => setOpenChatLead(openChatLead === l.id ? null : l.id)}>
                         {openChatLead === l.id ? 'Close chat' : 'Chat'}
-                      </button>
-                      {openChatLead === l.id && (
+                      </button>}
+                      {chatAvailable && openChatLead === l.id && (
                         <div className="seller-chat-inline">
                           <Chat
                             db={db}
@@ -195,7 +200,7 @@ export default function SellerDashboard() {
           </div>
         )
       )}
-      {tab === 'chats' && (
+      {tab === 'chats' && chatAvailable && (
         <>
           {chatRoomsError && <div className="alert error">{chatRoomsError}</div>}
           {sellerChatItems.length === 0 ? (
@@ -226,6 +231,9 @@ export default function SellerDashboard() {
                 </tbody>
               </table>
             </div>
+          )}
+          {tab === 'chats' && !chatAvailable && (
+            <div className="alert info">{firebaseError || 'Chat is unavailable because Firebase is not configured.'}</div>
           )}
           {activeChatItem && (
             <div className="mt-20">
