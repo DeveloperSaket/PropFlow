@@ -15,6 +15,7 @@ export default function PropertyForm() {
   const { user } = useAuth();
   const nav = useNavigate();
   const [form, setForm] = useState(blank);
+  const [imageFiles, setImageFiles] = useState([]);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -33,6 +34,28 @@ export default function PropertyForm() {
     }
   }, [id, editing]);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const selectImages = (e) => {
+    const files = Array.from(e.target.files || []);
+    const invalidFile = files.find((file) => !/\.(jpe?g|png|webp)$/i.test(file.name));
+    if (invalidFile) {
+      setErr(`${invalidFile.name} is not a supported image format. Use JPG, JPEG, PNG, or WebP.`);
+      setImageFiles([]);
+      return;
+    }
+    const oversizedFile = files.find((file) => file.size > 5 * 1024 * 1024);
+    if (oversizedFile) {
+      setErr(`${oversizedFile.name} exceeds the 5MB limit.`);
+      setImageFiles([]);
+      return;
+    }
+    if (files.length > 12) {
+      setErr('Select no more than 12 image files.');
+      setImageFiles([]);
+      return;
+    }
+    setErr('');
+    setImageFiles(files);
+  };
   const submit = async (draft) => {
     setErr(''); setBusy(true);
     const payload = {
@@ -45,8 +68,12 @@ export default function PropertyForm() {
       saveDraft: draft,
     };
     try {
-      if (editing) await api.put(`/properties/${id}`, payload);
-      else await api.post('/properties', payload);
+      const formData = new FormData();
+      Object.entries(payload).forEach(([key, value]) => {
+        formData.append(key, key === 'images' ? JSON.stringify(value) : value == null ? '' : String(value));
+      });
+      imageFiles.forEach((file) => formData.append('propertyImages', file));
+      await api.upload(`/properties${editing ? `/${id}` : ''}`, formData, editing ? 'PUT' : 'POST');
       nav('/seller');
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -103,8 +130,18 @@ export default function PropertyForm() {
           <div className="field"><label>Postal code</label><input value={form.pincode} onChange={set('pincode')} /></div>
         </div>
         <div className="field">
-          <label>Image URLs (comma-separated)</label>
+          <label>Image URLs (optional, comma-separated)</label>
           <input value={form.images} onChange={set('images')} placeholder="https://… , https://…" />
+        </div>
+        <div className="field">
+          <label>Upload property images (optional)</label>
+          <input
+            type="file"
+            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+            multiple
+            onChange={selectImages}
+          />
+          <small className="muted">JPG, JPEG, PNG, or WebP; up to 12 images, 5MB each. {imageFiles.length > 0 && `${imageFiles.length} selected.`}</small>
         </div>
         <div className="flex">
           <button className="btn" disabled={busy}>{editing ? 'Save & submit for review' : 'Submit for review'}</button>
@@ -115,4 +152,3 @@ export default function PropertyForm() {
     </div>
   );
 }
-

@@ -35,5 +35,5 @@ export const api = {
   put: (p, b) => request('PUT', p, b),
   patch: (p, b) => request('PATCH', p, b),
   del: (p) => request('DELETE', p),
-  upload: (p, formData) => request('POST', p, formData, { isForm: true }),
+  upload: (p, formData, method = 'POST') => request(method, p, formData, { isForm: true }),
 };
