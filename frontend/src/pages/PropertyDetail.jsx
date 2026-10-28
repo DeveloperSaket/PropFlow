@@ -34,13 +34,13 @@ export default function PropertyDetail() {
       setOk('Viewing requested! Check your dashboard for status updates.');
     } catch (e) { setErr(e.message); }
   };
-  const img = p.images?.[0] || `https://picsum.photos/seed/p${p.id}/1000/600`;
+  const img = p.images?.[0];
   return (
     <div className="container">
       <Link to="/browse">← Back to results</Link>
       <div className="grid cols-2 mt-14-align-start">
         <div>
-          <img src={img} alt={p.title} className="image-rounded-cover" />
+          {img ? <img src={img} alt={p.title} className="image-rounded-cover" /> : <div className="property-image-placeholder">No image available</div>}
           {p.images?.length > 1 && (
             <div className="flex wrap mt-10">
               {p.images.slice(1).map((u, i) => (

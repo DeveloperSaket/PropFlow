@@ -16,6 +16,7 @@ export default function PropertyForm() {
   const nav = useNavigate();
   const [form, setForm] = useState(blank);
   const [imageFiles, setImageFiles] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -34,6 +35,11 @@ export default function PropertyForm() {
     }
   }, [id, editing]);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  useEffect(() => {
+    const urls = imageFiles.map((file) => URL.createObjectURL(file));
+    setImagePreviews(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [imageFiles]);
   const selectImages = (e) => {
     const files = Array.from(e.target.files || []);
     const invalidFile = files.find((file) => !/\.(jpe?g|png|webp)$/i.test(file.name));
@@ -142,6 +148,13 @@ export default function PropertyForm() {
             onChange={selectImages}
           />
           <small className="muted">JPG, JPEG, PNG, or WebP; up to 12 images, 5MB each. {imageFiles.length > 0 && `${imageFiles.length} selected.`}</small>
+          {imagePreviews.length > 0 && (
+            <div className="property-image-previews">
+              {imagePreviews.map((src, index) => (
+                <img key={src} src={src} alt={`Selected property image ${index + 1}`} />
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex">
           <button className="btn" disabled={busy}>{editing ? 'Save & submit for review' : 'Submit for review'}</button>

@@ -51,6 +51,16 @@ a:hover { text-decoration: underline; }
 /* Property card */
 .prop-card { overflow: hidden; padding: 0; display: flex; flex-direction: column; }
 .prop-card img { width: 100%; height: 170px; object-fit: cover; background: #e2e8f0; }
+.prop-card-image-placeholder, .property-image-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: #e2e8f0;
+}
+.prop-card-image-placeholder { height: 170px; }
+.property-image-placeholder { min-height: 300px; border-radius: 12px; }
+.property-image-previews { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.property-image-previews img { width: 110px; height: 80px; object-fit: cover; border-radius: 8px; }
 .prop-card .body { padding: 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .prop-card .price { font-size: 18px; font-weight: 800; color: var(--brand); }
 .prop-card h3 { margin: 0; font-size: 16px; }

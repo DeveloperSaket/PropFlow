@@ -120,11 +120,11 @@ function validateImageCount(urls, files) {
   }
 }
 function persistImages(propertyId, urls, files) {
-  for (const url of urls) {
-    if (typeof url === 'string' && url.trim()) insertImage.run(propertyId, url.trim());
-  }
   for (const file of files) {
     insertImage.run(propertyId, `/uploads/${encodeURIComponent(path.basename(file.path))}`);
+  }
+  for (const url of urls) {
+    if (typeof url === 'string' && url.trim()) insertImage.run(propertyId, url.trim());
   }
 }
 function hydrate(row, includePrivateDetails = true) {
@@ -274,7 +274,8 @@ router.post('/', authenticate, requireRole('member'), requireKyc, propertyImageU
     const imageUrls = getImageUrls(b.images);
     validateImageCount(imageUrls, uploadedFiles);
     // New listings start in "pending" for admin compliance review
-    const status = b.saveDraft ? 'draft' : 'pending';
+    const saveDraft = b.saveDraft === true || b.saveDraft === 'true';
+    const status = saveDraft ? 'draft' : 'pending';
     const info = insertProperty.run({
       seller_id: req.user.id,
       title: b.title,
