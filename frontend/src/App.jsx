@@ -20,6 +20,14 @@ function Protected({ children, roles }) {
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
   return children;
 }
+
+function GuestOnly({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <Spinner />;
+  if (user) return <Navigate to="/" replace />;
+  return children;
+}
+
 export default function App() {
   return (
     <>
@@ -28,8 +36,8 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/browse" element={<Browse />} />
         <Route path="/properties/:id" element={<PropertyDetail />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
+        <Route path="/register" element={<GuestOnly><Register /></GuestOnly>} />
         <Route path="/kyc" element={<Protected roles={['member']}><Kyc /></Protected>} />
         <Route path="/buyer" element={<Protected roles={['member']}><BuyerDashboard /></Protected>} />
         <Route path="/seller" element={<Protected roles={['member']}><SellerDashboard /></Protected>} />

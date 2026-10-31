@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { db } from '../firebase/index.js';
@@ -10,6 +10,26 @@ export default function Navbar() {
   const nav = useNavigate();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navRef = useRef(null);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+
+    const closeMenu = () => setMobileMenuOpen(false);
+    const closeMenuOnOutsideClick = (event) => {
+      if (!navRef.current?.contains(event.target)) closeMenu();
+    };
+
+    document.addEventListener('pointerdown', closeMenuOnOutsideClick);
+    document.addEventListener('scroll', closeMenu, true);
+    window.addEventListener('scroll', closeMenu, { passive: true });
+
+    return () => {
+      document.removeEventListener('pointerdown', closeMenuOnOutsideClick);
+      document.removeEventListener('scroll', closeMenu, true);
+      window.removeEventListener('scroll', closeMenu);
+    };
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     if (!user || user.role === 'admin' || !chatAvailable || !db) {
@@ -50,7 +70,7 @@ export default function Navbar() {
   const doLogout = () => { logout(); nav('/'); };
 
   return (
-    <nav className="nav">
+    <nav className="nav" ref={navRef}>
       <Link to="/" className="brand">Prop<span>Flow</span></Link>
       <button
         className="nav-menu-toggle"
