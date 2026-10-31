@@ -16,7 +16,7 @@ import { audit } from '../utils/audit.js';
 const router = Router();
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const imageStorage = multer.diskStorage({
-  destination: config.uploadDir,
+  destination: config.propertyUploadDir,
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `property_${req.user.id}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}${ext}`);
@@ -121,7 +121,10 @@ function validateImageCount(urls, files) {
 }
 function persistImages(propertyId, urls, files) {
   for (const file of files) {
-    insertImage.run(propertyId, `/uploads/${encodeURIComponent(path.basename(file.path))}`);
+    insertImage.run(
+      propertyId,
+      `/uploads/properties/${encodeURIComponent(path.basename(file.path))}`
+    );
   }
   for (const url of urls) {
     if (typeof url === 'string' && url.trim()) insertImage.run(propertyId, url.trim());
