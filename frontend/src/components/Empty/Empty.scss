@@ -1,0 +1,88 @@
+@use "../../lib/constants";
+
+.empty-state {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16) var(--space-8);
+  color: var(--color-slate-700);
+  text-align: center;
+}
+
+.empty-state-icon {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: var(--space-5);
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--color-blue-100);
+  color: var(--brand);
+}
+
+.empty-state-icon svg {
+  width: 1.75rem;
+  height: 1.75rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+}
+
+.empty-state-title {
+  margin: 0;
+  color: var(--color-slate-900);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.empty-state-description {
+  max-width: 36rem;
+  margin-top: var(--space-2);
+  color: var(--muted);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+}
+
+.empty-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.empty-state.property-image-empty {
+  min-height: 300px;
+  border-radius: var(--radius-lg);
+  background: var(--color-slate-200);
+}
+
+.empty-state.property-card-image-empty {
+  min-height: 170px;
+  padding: var(--space-6);
+  background: var(--color-slate-200);
+}
+
+.empty-state.property-card-image-empty .empty-state-icon {
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: var(--space-2);
+}
+
+.empty-state.property-card-image-empty .empty-state-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.empty-state.property-card-image-empty .empty-state-title {
+  font-size: var(--font-size-compact);
+}
+
+.empty-state.chat-empty {
+  margin: auto;
+  padding: var(--space-6);
+}

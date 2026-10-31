@@ -1,11 +1,14 @@
 import { Link } from 'react-router-dom';
 import { Badge, formatMoney } from './ui.jsx';
 import { getPropertyTypeLabel } from '../constants/propertyTypes.js';
+import Empty from './Empty/index.jsx';
 export default function PropertyCard({ p, showStatus }) {
   const img = p.images?.[0];
   return (
     <Link to={`/properties/${p.id}`} className="card prop-card color-inherit">
-      {img ? <img src={img} alt={p.title} loading="lazy" /> : <div className="prop-card-image-placeholder">No image available</div>}
+      {img ? <img src={img} alt={p.title} loading="lazy" /> : (
+        <Empty className="property-card-image-empty" title="No image available" description="" />
+      )}
       <div className="body">
         <div className="flex between">
           <span className="price">

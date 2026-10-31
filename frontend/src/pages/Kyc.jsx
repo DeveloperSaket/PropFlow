@@ -6,6 +6,7 @@ import Spinner from '../lib/Spinner/index.jsx';
 import { Badge, Alert } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Form, { FileInput, Select } from '../lib/Form/index.jsx';
+import Empty from '../components/Empty/index.jsx';
 export default function Kyc() {
   const { user, refresh } = useAuth();
   const queryClient = useQueryClient();
@@ -76,7 +77,7 @@ export default function Kyc() {
       )}
       <h3 className="mt-26">Submitted documents</h3>
       {docs.length === 0 ? (
-        <p className="muted">No documents submitted yet.</p>
+        <Empty title="No documents submitted yet" description="Documents you submit for identity verification will appear here." />
       ) : (
         <div className="table-wrap card p-0">
           <table>

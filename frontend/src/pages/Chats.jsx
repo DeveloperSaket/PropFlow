@@ -7,6 +7,7 @@ import Chat from '../components/Chat/index.jsx';
 import ChatConversationCard from '../components/ChatConversationCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { db } from '../firebase/index.js';
+import Empty from '../components/Empty/index.jsx';
 import {
   getUnreadChatCount,
   listenToBuyerChatRooms,
@@ -173,11 +174,14 @@ export default function Chats() {
       {error && <div className="alert error">{error}</div>}
       {view === 'seller' && sellerLeadsQuery.error && <div className="alert error">{sellerLeadsQuery.error.message}</div>}
       {roomsLoading ? <Spinner /> : view === 'seller' && sellerLeadsQuery.error && !sellerLeadsQuery.data ? null : items.length === 0 ? (
-        <p className="muted">
-          {view === 'buyer'
-            ? <>No buyer conversations yet. <Link to="/browse">Browse properties</Link> to contact a seller.</>
-            : 'No seller conversations yet. Conversations appear here when buyers contact you about a listing.'}
-        </p>
+        <Empty
+          title={view === 'buyer' ? 'No buyer conversations yet' : 'No seller conversations yet'}
+          description={view === 'buyer'
+            ? 'Contact a seller from a property listing to start a conversation.'
+            : 'Conversations will appear here when buyers contact you about a listing.'}
+        >
+          {view === 'buyer' && <Link className="btn" to="/browse">Browse properties</Link>}
+        </Empty>
       ) : (
         <div className="table-wrap card p-0 chat-table-desktop">
           <table>

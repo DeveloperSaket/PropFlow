@@ -10,6 +10,7 @@ import Chat from '../components/Chat/index.jsx';
 import { db } from '../firebase/index.js';
 import { getPropertyTypeLabel } from '../constants/propertyTypes.js';
 import { Input, Textarea } from '../lib/Form/index.jsx';
+import Empty from '../components/Empty/index.jsx';
 export default function PropertyDetail() {
   const { id } = useParams();
   const { user, chatAvailable, firebaseError } = useAuth();
@@ -61,7 +62,9 @@ export default function PropertyDetail() {
       {error && <Alert type="error">{error.message}</Alert>}
       <div className="grid cols-2 mt-14-align-start">
         <div>
-          {img ? <img src={img} alt={p.title} className="image-rounded-cover" /> : <div className="property-image-placeholder">No image available</div>}
+          {img ? <img src={img} alt={p.title} className="image-rounded-cover" /> : (
+            <Empty className="property-image-empty" title="No image available" description="" />
+          )}
           {p.images?.length > 1 && (
             <div className="flex wrap mt-10">
               {p.images.slice(1).map((u, i) => (

@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import Chat from '../components/Chat/index.jsx';
 import { db } from '../firebase/index.js';
 import { getUnreadChatCount, listenToSellerChatRooms } from '../firebase/chat.js';
+import Empty from '../components/Empty/index.jsx';
 export default function SellerDashboard() {
   const { user, chatAvailable, firebaseError } = useAuth();
   const nav = useNavigate();
@@ -155,7 +156,11 @@ export default function SellerDashboard() {
         ))}
       </div>
       {tab === 'listings' && (
-        listings.length === 0 ? <p className="muted">No listings yet. <button className="btn small" onClick={() => nav('/seller/new')}>Create a listing</button></p> : (
+        listings.length === 0 ? (
+          <Empty title="No listings yet" description="Create your first listing to start reaching buyers.">
+            <button className="btn" onClick={() => nav('/seller/new')}>Create a listing</button>
+          </Empty>
+        ) : (
           <div className="table-wrap card p-0">
             <table>
               <thead><tr><th>Title</th><th>Price</th><th>City</th><th>Status</th><th>Views</th><th>Interests</th><th>Actions</th></tr></thead>
@@ -183,7 +188,9 @@ export default function SellerDashboard() {
         )
       )}
       {tab === 'leads' && (
-        leads.length === 0 ? <p className="muted">No buyer leads yet.</p> : (
+        leads.length === 0 ? (
+          <Empty title="No buyer leads yet" description="Buyer interest in your listings will appear here." />
+        ) : (
           <div className="table-wrap card p-0">
             <table>
               <thead><tr><th>Property</th><th>Buyer</th><th>Contact</th><th>Message</th><th>Status</th><th>Update</th></tr></thead>
@@ -229,7 +236,10 @@ export default function SellerDashboard() {
         <>
           {chatRoomsError && <div className="alert error">{chatRoomsError}</div>}
           {sellerChatItems.length === 0 ? (
-            <p className="muted">No buyer conversations yet. Conversations will appear here when buyers contact you about a listing.</p>
+            <Empty
+              title="No buyer conversations yet"
+              description="Conversations will appear here when buyers contact you about a listing."
+            />
           ) : (
             <div className="table-wrap card p-0">
               <table>
@@ -275,7 +285,9 @@ export default function SellerDashboard() {
         </>
       )}
       {tab === 'viewings' && (
-        appts.length === 0 ? <p className="muted">No viewing requests.</p> : (
+        appts.length === 0 ? (
+          <Empty title="No viewing requests" description="Buyer viewing requests will appear here." />
+        ) : (
           <div className="table-wrap card p-0">
             <table>
               <thead><tr><th>Property</th><th>Buyer</th><th>When</th><th>Status</th><th>Action</th></tr></thead>

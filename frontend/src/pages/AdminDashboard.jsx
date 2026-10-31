@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Badge, Stat, formatMoney } from '../components/ui.jsx';
 import Spinner from '../lib/Spinner/index.jsx';
 import { Input } from '../lib/Form/index.jsx';
+import Empty from '../components/Empty/index.jsx';
 export default function AdminDashboard() {
   const [tab, setTab] = useState('overview');
   const queryClient = useQueryClient();
@@ -94,7 +95,9 @@ export default function AdminDashboard() {
         </>
       )}
       {tab === 'listings' && (
-        pending.length === 0 ? <p className="muted">Nothing awaiting review. 🎉</p> : (
+        pending.length === 0 ? (
+          <Empty title="Queue is clear" description="There are no listings awaiting review." />
+        ) : (
           <div className="grid cols-2">
             {pending.map((p) => (
               <div key={p.id} className="card">
@@ -125,6 +128,9 @@ export default function AdminDashboard() {
         )
       )}
       {tab === 'users' && (
+        users.length === 0 ? (
+          <Empty title="No users found" description="User accounts will appear here when they register." />
+        ) : (
         <div className="table-wrap card p-0">
           <table>
             <thead><tr><th>Name</th><th>Email</th><th>Account</th><th>Agent</th><th>KYC</th><th>Active</th><th>Actions</th></tr></thead>
@@ -152,9 +158,12 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         </div>
+        )
       )}
       {tab === 'appointments' && (
-        appts.length === 0 ? <p className="muted">No appointments.</p> : (
+        appts.length === 0 ? (
+          <Empty title="No appointments" description="Scheduled property viewings will appear here." />
+        ) : (
           <div className="table-wrap card p-0">
             <table>
               <thead><tr><th>Property</th><th>Buyer</th><th>Seller</th><th>When</th><th>Status</th></tr></thead>
@@ -172,6 +181,9 @@ export default function AdminDashboard() {
         )
       )}
       {tab === 'audit' && (
+        audit.length === 0 ? (
+          <Empty title="No audit activity" description="Platform activity will appear here as it happens." />
+        ) : (
         <div className="table-wrap card p-0">
           <table>
             <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead>
@@ -188,6 +200,7 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         </div>
+        )
       )}
     </div>
   );

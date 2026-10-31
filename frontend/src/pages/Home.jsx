@@ -5,6 +5,7 @@ import PropertyCard from '../components/PropertyCard.jsx';
 import Spinner from '../lib/Spinner/index.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert } from '../components/ui.jsx';
+import Empty from '../components/Empty/index.jsx';
 export default function Home() {
   const { user } = useAuth();
   const { data: properties = [], isPending, error } = useQuery({
@@ -33,7 +34,10 @@ export default function Home() {
       ) : error && !properties.length ? (
         <Alert type="error">{error.message}</Alert>
       ) : properties.length === 0 ? (
-        <p className="muted">No approved listings yet.</p>
+        <Empty
+          title="No approved listings yet"
+          description="Check back soon for newly reviewed properties."
+        />
       ) : (
         <>
           {error && <Alert type="error">{error.message}</Alert>}
