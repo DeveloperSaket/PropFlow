@@ -3,6 +3,7 @@ import { getOrCreateChatRoom, listenToMessages, markChatRoomRead, sendMessage } 
 import { useAuth } from '../../context/AuthContext.jsx';
 import Spinner from '../../lib/Spinner/index.jsx';
 import Form, { Input } from '../../lib/Form/index.jsx';
+import Empty from '../Empty/index.jsx';
 
 function formatTimestamp(timestamp) {
 	if (!timestamp?.toDate) return 'Sending...';
@@ -87,7 +88,7 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 			<div className="chat-messages" aria-live="polite">
 				{loading && <Spinner label="Opening secure chat" className="chat-loading" />}
 				{!loading && !messages.length && !error && (
-					<p className="chat-placeholder">No messages yet. Start the conversation.</p>
+					<Empty className="chat-empty" title="No messages yet" description="Start the conversation by sending a message." />
 				)}
 				{messages.map((message) => {
 					const ownMessage = message.sender_id === normalizedCurrentUserId;

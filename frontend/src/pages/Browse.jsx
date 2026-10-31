@@ -5,6 +5,7 @@ import PropertyCard from '../components/PropertyCard.jsx';
 import PropertyFilters, { PRICE_MAX, PRICE_MIN } from '../components/PropertyFilters.jsx';
 import Spinner from '../lib/Spinner/index.jsx';
 import { Alert } from '../components/ui.jsx';
+import Empty from '../components/Empty/index.jsx';
 
 const empty = {
   q: '', type: '', listing: '', city: '', minPrice: PRICE_MIN, maxPrice: PRICE_MAX, bedrooms: '', sort: 'newest',
@@ -42,7 +43,10 @@ export default function Browse() {
       ) : result.data.length === 0 ? (
         <>
           {error && <Alert type="error">{error.message}</Alert>}
-          <p className="muted">No properties match your filters.</p>
+          <Empty
+            title="No properties match your filters"
+            description="Try adjusting your search terms or filters to see more listings."
+          />
         </>
       ) : (
         <>

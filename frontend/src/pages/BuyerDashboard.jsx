@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import Chat from '../components/Chat/index.jsx';
 import { db } from '../firebase/index.js';
 import { getUnreadChatCount, listenToBuyerChatRooms } from '../firebase/chat.js';
+import Empty from '../components/Empty/index.jsx';
 export default function BuyerDashboard() {
   const { user, chatAvailable, firebaseError } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -105,7 +106,12 @@ export default function BuyerDashboard() {
       )}
       <h2>My interests</h2>
       {interests.length === 0 ? (
-        <p className="muted">You haven't expressed interest in any property yet. <Link to="/browse">Browse listings →</Link></p>
+        <Empty
+          title="No property interests yet"
+          description="Properties you express interest in will appear here."
+        >
+          <Link className="btn" to="/browse">Browse listings</Link>
+        </Empty>
       ) : (
         <div className="table-wrap card p-0 mb-30">
           <table>
@@ -131,7 +137,7 @@ export default function BuyerDashboard() {
       )}
       <h2>My viewings</h2>
       {appts.length === 0 ? (
-        <p className="muted">No viewings scheduled.</p>
+        <Empty title="No viewings scheduled" description="Viewing requests and appointments will appear here." />
       ) : (
         <div className="table-wrap card p-0">
           <table>
@@ -163,7 +169,12 @@ export default function BuyerDashboard() {
             <div className="alert error">{chatRoomsError}</div>
           ) : null}
           {chatAvailable && chatRooms === null ? <Spinner /> : chatAvailable && chatRooms.length === 0 ? (
-            <p className="muted">No conversations yet. <Link to="/browse">Browse properties</Link> to contact a seller.</p>
+            <Empty
+              title="No conversations yet"
+              description="Contact a seller from a property listing to start a conversation."
+            >
+              <Link className="btn" to="/browse">Browse properties</Link>
+            </Empty>
           ) : chatAvailable && (
             <div className="table-wrap card p-0">
               <table>
