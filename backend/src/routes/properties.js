@@ -1,5 +1,10 @@
 import { Router } from 'express';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import multer from 'multer';
 import { db } from '../db.js';
+import { config } from '../config.js';
 import {
   authenticate,
   optionalAuth,
@@ -9,6 +14,26 @@ import {
 import { required, oneOf, toNumber, HttpError } from '../utils/validate.js';
 import { audit } from '../utils/audit.js';
 const router = Router();
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const imageStorage = multer.diskStorage({
+  destination: config.propertyUploadDir,
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `property_${req.user.id}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}${ext}`);
+  },
+});
+const propertyImageUpload = multer({
+  storage: imageStorage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 12 },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!IMAGE_EXTENSIONS.has(ext)) {
+      cb(new HttpError(400, 'Property images must be JPG, JPEG, PNG, or WebP files'));
+      return;
+    }
+    cb(null, true);
+  },
+}).array('propertyImages', 12);
 const PROPERTY_TYPES = [
   'detached', 'semi_detached', 'freehold_townhouse', 'condo_townhouse',
   'condo_apt', 'link', 'vacant_land', 'other',
@@ -38,6 +63,73 @@ const getImages = db.prepare(
 const countInterests = db.prepare(
   'SELECT COUNT(*) AS c FROM interests WHERE property_id = ?'
 );
+function getImageFormat(file) {
+  const fd = fs.openSync(file.path, 'r');
+  const header = Buffer.alloc(12);
+  let bytesRead;
+  try {
+    bytesRead = fs.readSync(fd, header, 0, header.length, 0);
+  } finally {
+    fs.closeSync(fd);
+  }
+  if (bytesRead >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) {
+    return 'jpg';
+  }
+  if (
+    bytesRead >= 8 &&
+    header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  ) {
+    return 'png';
+  }
+  if (
+    bytesRead >= 12 &&
+    header.toString('ascii', 0, 4) === 'RIFF' &&
+    header.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return 'webp';
+  }
+  return null;
+}
+function validateImageFiles(files) {
+  for (const file of files) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const actualFormat = getImageFormat(file);
+    const expectedFormat = ext === '.jpeg' ? 'jpg' : ext.slice(1);
+    if (!actualFormat || actualFormat !== expectedFormat) {
+      throw new HttpError(400, `${file.originalname} is not a valid ${ext.slice(1).toUpperCase()} image`);
+    }
+  }
+}
+function cleanupImageFiles(files) {
+  for (const file of files) fs.rmSync(file.path, { force: true });
+}
+function getImageUrls(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+  try {
+    const urls = JSON.parse(value);
+    if (!Array.isArray(urls)) throw new Error('Expected an array');
+    return urls;
+  } catch {
+    throw new HttpError(400, 'Images must be provided as a list of URLs');
+  }
+}
+function validateImageCount(urls, files) {
+  if (urls.length + files.length > 12) {
+    throw new HttpError(400, 'A listing can have at most 12 images');
+  }
+}
+function persistImages(propertyId, urls, files) {
+  for (const file of files) {
+    insertImage.run(
+      propertyId,
+      `/uploads/properties/${encodeURIComponent(path.basename(file.path))}`
+    );
+  }
+  for (const url of urls) {
+    if (typeof url === 'string' && url.trim()) insertImage.run(propertyId, url.trim());
+  }
+}
 function hydrate(row, includePrivateDetails = true) {
   if (!row) return null;
   const images = getImages.all(row.id).map((r) => r.url);
@@ -171,107 +263,122 @@ router.get('/:id', optionalAuth, (req, res) => {
   res.json({ data: hydrate(getPropertyRow.get(req.params.id), Boolean(req.user)) });
 });
 // POST /api/properties — seller creates a listing (requires KYC)
-router.post('/', authenticate, requireRole('member'), requireKyc, (req, res) => {
-  const b = req.body;
-  required(b, ['title', 'property_type', 'listing_type', 'price']);
-  oneOf(b.property_type, PROPERTY_TYPES, 'property_type');
-  oneOf(b.listing_type, LISTING_TYPES, 'listing_type');
-  const price = toNumber(b.price);
-  if (price === undefined || price <= 0)
-    throw new HttpError(400, 'Price must be a positive number');
-  // New listings start in "pending" for admin compliance review
-  const status = b.saveDraft ? 'draft' : 'pending';
-  const info = insertProperty.run({
-    seller_id: req.user.id,
-    title: b.title,
-    description: b.description || null,
-    property_type: b.property_type,
-    listing_type: b.listing_type,
-    price,
-    area_sqft: toNumber(b.area_sqft, null),
-    bedrooms: toNumber(b.bedrooms, null),
-    bathrooms: toNumber(b.bathrooms, null),
-    address: b.address || null,
-    city: b.city || null,
-    state: b.state || null,
-    country: b.country || 'Canada',
-    pincode: b.pincode || null,
-    status,
-  });
-  const id = info.lastInsertRowid;
-  if (Array.isArray(b.images)) {
-    for (const url of b.images.slice(0, 12)) {
-      if (typeof url === 'string' && url.trim()) insertImage.run(id, url.trim());
-    }
+router.post('/', authenticate, requireRole('member'), requireKyc, propertyImageUpload, (req, res) => {
+  const uploadedFiles = req.files || [];
+  try {
+    validateImageFiles(uploadedFiles);
+    const b = req.body;
+    required(b, ['title', 'property_type', 'listing_type', 'price']);
+    oneOf(b.property_type, PROPERTY_TYPES, 'property_type');
+    oneOf(b.listing_type, LISTING_TYPES, 'listing_type');
+    const price = toNumber(b.price);
+    if (price === undefined || price <= 0)
+      throw new HttpError(400, 'Price must be a positive number');
+    const imageUrls = getImageUrls(b.images);
+    validateImageCount(imageUrls, uploadedFiles);
+    // New listings start in "pending" for admin compliance review
+    const saveDraft = b.saveDraft === true || b.saveDraft === 'true';
+    const status = saveDraft ? 'draft' : 'pending';
+    const info = insertProperty.run({
+      seller_id: req.user.id,
+      title: b.title,
+      description: b.description || null,
+      property_type: b.property_type,
+      listing_type: b.listing_type,
+      price,
+      area_sqft: toNumber(b.area_sqft, null),
+      bedrooms: toNumber(b.bedrooms, null),
+      bathrooms: toNumber(b.bathrooms, null),
+      address: b.address || null,
+      city: b.city || null,
+      state: b.state || null,
+      country: b.country || 'Canada',
+      pincode: b.pincode || null,
+      status,
+    });
+    const id = info.lastInsertRowid;
+    persistImages(id, imageUrls, uploadedFiles);
+    audit({
+      actorId: req.user.id,
+      action: 'property.create',
+      entity: 'property',
+      entityId: id,
+      meta: { status },
+      ip: req.ip,
+    });
+    res.status(201).json({ data: hydrate(getPropertyRow.get(id)) });
+  } catch (error) {
+    cleanupImageFiles(uploadedFiles);
+    throw error;
   }
-  audit({
-    actorId: req.user.id,
-    action: 'property.create',
-    entity: 'property',
-    entityId: id,
-    meta: { status },
-    ip: req.ip,
-  });
-  res.status(201).json({ data: hydrate(getPropertyRow.get(id)) });
 });
 // PUT /api/properties/:id — owner updates (re-enters pending review)
-router.put('/:id', authenticate, requireRole('member', 'admin'), (req, res) => {
-  const row = getPropertyRow.get(req.params.id);
-  if (!row) throw new HttpError(404, 'Property not found');
-  const isAdmin = req.user.role === 'admin';
-  if (!isAdmin && row.seller_id !== req.user.id)
-    throw new HttpError(403, 'You can only edit your own listings');
-  const b = req.body;
-  if (b.property_type) oneOf(b.property_type, PROPERTY_TYPES, 'property_type');
-  if (b.listing_type) oneOf(b.listing_type, LISTING_TYPES, 'listing_type');
-  const fields = {
-    title: b.title ?? row.title,
-    description: b.description ?? row.description,
-    property_type: b.property_type ?? row.property_type,
-    listing_type: b.listing_type ?? row.listing_type,
-    price: toNumber(b.price, row.price),
-    area_sqft: toNumber(b.area_sqft, row.area_sqft),
-    bedrooms: toNumber(b.bedrooms, row.bedrooms),
-    bathrooms: toNumber(b.bathrooms, row.bathrooms),
-    address: b.address ?? row.address,
-    city: b.city ?? row.city,
-    state: b.state ?? row.state,
-    country: b.country ?? row.country,
-    pincode: b.pincode ?? row.pincode,
-  };
-  // A seller editing an approved/rejected listing sends it back to review.
-  let status = row.status;
-  if (!isAdmin && ['approved', 'rejected'].includes(row.status)) {
-    status = 'pending';
-  }
-  if (isAdmin && b.status) {
-    oneOf(b.status, ['draft', 'pending', 'approved', 'rejected', 'sold'], 'status');
-    status = b.status;
-  }
-  db.prepare(
-    `UPDATE properties SET
-       title=@title, description=@description, property_type=@property_type,
-       listing_type=@listing_type, price=@price, area_sqft=@area_sqft,
-       bedrooms=@bedrooms, bathrooms=@bathrooms, address=@address, city=@city,
-       state=@state, country=@country, pincode=@pincode, status=@status,
-       updated_at=datetime('now')
-     WHERE id=@id`
-  ).run({ ...fields, status, id: row.id });
-  if (Array.isArray(b.images)) {
-    db.prepare('DELETE FROM property_images WHERE property_id = ?').run(row.id);
-    for (const url of b.images.slice(0, 12)) {
-      if (typeof url === 'string' && url.trim()) insertImage.run(row.id, url.trim());
+router.put('/:id', authenticate, requireRole('member', 'admin'), propertyImageUpload, (req, res) => {
+  const uploadedFiles = req.files || [];
+  try {
+    validateImageFiles(uploadedFiles);
+    const row = getPropertyRow.get(req.params.id);
+    if (!row) throw new HttpError(404, 'Property not found');
+    const isAdmin = req.user.role === 'admin';
+    if (!isAdmin && row.seller_id !== req.user.id)
+      throw new HttpError(403, 'You can only edit your own listings');
+    const b = req.body;
+    if (b.property_type) oneOf(b.property_type, PROPERTY_TYPES, 'property_type');
+    if (b.listing_type) oneOf(b.listing_type, LISTING_TYPES, 'listing_type');
+    const imageUrls = b.images !== undefined ? getImageUrls(b.images) : [];
+    if (b.images !== undefined || uploadedFiles.length) {
+      validateImageCount(imageUrls, uploadedFiles);
     }
+    const fields = {
+      title: b.title ?? row.title,
+      description: b.description ?? row.description,
+      property_type: b.property_type ?? row.property_type,
+      listing_type: b.listing_type ?? row.listing_type,
+      price: toNumber(b.price, row.price),
+      area_sqft: toNumber(b.area_sqft, row.area_sqft),
+      bedrooms: toNumber(b.bedrooms, row.bedrooms),
+      bathrooms: toNumber(b.bathrooms, row.bathrooms),
+      address: b.address ?? row.address,
+      city: b.city ?? row.city,
+      state: b.state ?? row.state,
+      country: b.country ?? row.country,
+      pincode: b.pincode ?? row.pincode,
+    };
+    // A seller editing an approved/rejected listing sends it back to review.
+    let status = row.status;
+    if (!isAdmin && ['approved', 'rejected'].includes(row.status)) {
+      status = 'pending';
+    }
+    if (isAdmin && b.status) {
+      oneOf(b.status, ['draft', 'pending', 'approved', 'rejected', 'sold'], 'status');
+      status = b.status;
+    }
+    db.prepare(
+      `UPDATE properties SET
+         title=@title, description=@description, property_type=@property_type,
+         listing_type=@listing_type, price=@price, area_sqft=@area_sqft,
+         bedrooms=@bedrooms, bathrooms=@bathrooms, address=@address, city=@city,
+         state=@state, country=@country, pincode=@pincode, status=@status,
+         updated_at=datetime('now')
+       WHERE id=@id`
+    ).run({ ...fields, status, id: row.id });
+    if (b.images !== undefined || uploadedFiles.length) {
+      db.prepare('DELETE FROM property_images WHERE property_id = ?').run(row.id);
+      persistImages(row.id, imageUrls, uploadedFiles);
+    }
+    audit({
+      actorId: req.user.id,
+      action: 'property.update',
+      entity: 'property',
+      entityId: row.id,
+      meta: { status },
+      ip: req.ip,
+    });
+    res.json({ data: hydrate(getPropertyRow.get(row.id)) });
+  } catch (error) {
+    cleanupImageFiles(uploadedFiles);
+    throw error;
   }
-  audit({
-    actorId: req.user.id,
-    action: 'property.update',
-    entity: 'property',
-    entityId: row.id,
-    meta: { status },
-    ip: req.ip,
-  });
-  res.json({ data: hydrate(getPropertyRow.get(row.id)) });
 });
 // PATCH /api/properties/:id/sold — owner marks as sold
 router.patch('/:id/sold', authenticate, requireRole('member', 'admin'), (req, res) => {

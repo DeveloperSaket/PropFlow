@@ -1,34 +1,48 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
-import { Badge, Stat, Spinner, formatMoney } from '../components/ui.jsx';
+import { appointmentQueries, interestQueries, propertyQueries, queryKeys } from '../api/queries.js';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert, Badge, Stat, formatMoney } from '../components/ui.jsx';
+import Spinner from '../lib/Spinner/index.jsx';
+import { Select } from '../lib/Form/index.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Chat from '../components/Chat/index.jsx';
 import { db } from '../firebase/index.js';
 import { getUnreadChatCount, listenToSellerChatRooms } from '../firebase/chat.js';
+import Empty from '../components/Empty/index.jsx';
 export default function SellerDashboard() {
-  const { user } = useAuth();
+  const { user, chatAvailable, firebaseError } = useAuth();
   const nav = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState(() => searchParams.get('tab') || 'listings');
-  const [listings, setListings] = useState(null);
-  const [leads, setLeads] = useState(null);
-  const [appts, setAppts] = useState(null);
+  const queryClient = useQueryClient();
+  const { data: listings, isPending: listingsPending, error: listingsError } = useQuery({
+    queryKey: queryKeys.properties.mine(user.id),
+    queryFn: propertyQueries.mine,
+  });
+  const { data: leads, isPending: leadsPending, error: leadsError } = useQuery({
+    queryKey: queryKeys.interests.received(user.id),
+    queryFn: interestQueries.received,
+  });
+  const { data: appts, isPending: appointmentsPending, error: appointmentsError } = useQuery({
+    queryKey: queryKeys.appointments.mine(user.id, 'seller'),
+    queryFn: ({ signal }) => appointmentQueries.mine('seller', { signal }),
+  });
   const [openChatLead, setOpenChatLead] = useState(null);
   const [chatRooms, setChatRooms] = useState(null);
   const [chatRoomsError, setChatRoomsError] = useState('');
   const [activeChatRoomId, setActiveChatRoomId] = useState(null);
-  const load = () => {
-    api.get('/properties?mine=1&limit=50').then((r) => setListings(r.data));
-    api.get('/interests/received').then((r) => setLeads(r.data));
-    api.get('/appointments/mine?view=seller').then((r) => setAppts(r.data));
-  };
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
     setTab(['listings', 'leads', 'viewings', 'chats'].includes(requestedTab) ? requestedTab : 'listings');
   }, [searchParams]);
-  useEffect(load, []);
   useEffect(() => {
+    if (!chatAvailable || !db) {
+      setChatRooms([]);
+      setChatRoomsError(firebaseError);
+      return undefined;
+    }
     try {
       return listenToSellerChatRooms(
         db,
@@ -46,15 +60,25 @@ export default function SellerDashboard() {
       setChatRoomsError(error.message);
       setChatRooms([]);
     }
-  }, [user.id]);
-  const del = async (id) => {
+  }, [user.id, chatAvailable, firebaseError]);
+  const dashboardMutation = useMutation({
+    mutationFn: ({ method, path, body }) => method === 'delete' ? api.del(path) : api.patch(path, body),
+    onSuccess: (_data, variables) => {
+      const keys = variables.kind === 'listing'
+        ? [queryKeys.properties.all, queryKeys.admin.stats]
+        : variables.kind === 'interest'
+          ? [queryKeys.interests.all, queryKeys.properties.all, queryKeys.admin.stats]
+          : [queryKeys.appointments.all, queryKeys.admin.stats, queryKeys.admin.appointments];
+      return Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+    },
+  });
+  const del = (id) => {
     if (!confirm('Delete this listing?')) return;
-    await api.del(`/properties/${id}`);
-    load();
+    dashboardMutation.mutate({ method: 'delete', path: `/properties/${id}`, kind: 'listing' });
   };
-  const markSold = async (id) => { await api.patch(`/properties/${id}/sold`); load(); };
-  const setLead = async (id, status) => { await api.patch(`/interests/${id}/status`, { status }); load(); };
-  const setAppt = async (id, status) => { await api.patch(`/appointments/${id}/status`, { status }); load(); };
+  const markSold = (id) => dashboardMutation.mutate({ method: 'patch', path: `/properties/${id}/sold`, kind: 'listing' });
+  const setLead = (id, status) => dashboardMutation.mutate({ method: 'patch', path: `/interests/${id}/status`, body: { status }, kind: 'interest' });
+  const setAppt = (id, status) => dashboardMutation.mutate({ method: 'patch', path: `/appointments/${id}/status`, body: { status }, kind: 'appointment' });
   const selectTab = (nextTab) => {
     setTab(nextTab);
     const nextParams = new URLSearchParams(searchParams);
@@ -62,7 +86,10 @@ export default function SellerDashboard() {
     else nextParams.set('tab', nextTab);
     setSearchParams(nextParams, { replace: true });
   };
-  if (!listings || !leads || !appts) return <Spinner />;
+  if (listingsPending || leadsPending || appointmentsPending) return <Spinner />;
+  if ((listingsError && !listings) || (leadsError && !leads) || (appointmentsError && !appts)) {
+    return <div className="container"><Alert type="error">{listingsError?.message || leadsError?.message || appointmentsError?.message}</Alert></div>;
+  }
   const approved = listings.filter((l) => l.status === 'approved').length;
   const pending = listings.filter((l) => l.status === 'pending').length;
   const totalViews = listings.reduce((s, l) => s + (l.views || 0), 0);
@@ -104,6 +131,10 @@ export default function SellerDashboard() {
           <h1 className="page-title">Seller Dashboard</h1>
           <p className="subtle">Manage your listings and buyer leads.</p>
         </div>
+        {dashboardMutation.error && <Alert type="error">{dashboardMutation.error.message}</Alert>}
+        {(listingsError || leadsError || appointmentsError) && (
+          <Alert type="error">{listingsError?.message || leadsError?.message || appointmentsError?.message}</Alert>
+        )}
         <button className="btn" onClick={() => nav('/seller/new')}>+ New listing</button>
       </div>
       {user.kyc_status !== 'verified' && (
@@ -118,14 +149,18 @@ export default function SellerDashboard() {
         <Stat num={leads.length} label="Buyer leads" color="var(--brand)" />
       </div>
       <div className="tabs">
-        {['listings', 'leads', 'viewings', 'chats'].map((t) => (
+        {['listings', 'leads', 'viewings', ...(chatAvailable ? ['chats'] : [])].map((t) => (
           <div key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => selectTab(t)}>
             {t === 'listings' ? 'My Listings' : t === 'leads' ? `Leads (${leads.length})` : t === 'viewings' ? `Viewings (${appts.length})` : `Chats (${chatRooms?.length ?? 0})${unreadChatCount ? ` · ${unreadChatCount} new` : ''}`}
           </div>
         ))}
       </div>
       {tab === 'listings' && (
-        listings.length === 0 ? <p className="muted">No listings yet. <button className="btn small" onClick={() => nav('/seller/new')}>Create a listing</button></p> : (
+        listings.length === 0 ? (
+          <Empty title="No listings yet" description="Create your first listing to start reaching buyers.">
+            <button className="btn" onClick={() => nav('/seller/new')}>Create a listing</button>
+          </Empty>
+        ) : (
           <div className="table-wrap card p-0">
             <table>
               <thead><tr><th>Title</th><th>Price</th><th>City</th><th>Status</th><th>Views</th><th>Interests</th><th>Actions</th></tr></thead>
@@ -153,7 +188,9 @@ export default function SellerDashboard() {
         )
       )}
       {tab === 'leads' && (
-        leads.length === 0 ? <p className="muted">No buyer leads yet.</p> : (
+        leads.length === 0 ? (
+          <Empty title="No buyer leads yet" description="Buyer interest in your listings will appear here." />
+        ) : (
           <div className="table-wrap card p-0">
             <table>
               <thead><tr><th>Property</th><th>Buyer</th><th>Contact</th><th>Message</th><th>Status</th><th>Update</th></tr></thead>
@@ -166,16 +203,16 @@ export default function SellerDashboard() {
                     <td className="muted">{l.message || '—'}</td>
                     <td><Badge value={l.status} /></td>
                     <td>
-                      <select value={l.status} onChange={(e) => setLead(l.id, e.target.value)}>
+                      <Select label="Lead status" value={l.status} onChange={(e) => setLead(l.id, e.target.value)}>
                         <option value="new">new</option>
                         <option value="contacted">contacted</option>
                         <option value="negotiating">negotiating</option>
                         <option value="closed">closed</option>
-                      </select>
-                      <button className="btn small mt-10" onClick={() => setOpenChatLead(openChatLead === l.id ? null : l.id)}>
+                      </Select>
+                      {chatAvailable && <button className="btn small mt-10" onClick={() => setOpenChatLead(openChatLead === l.id ? null : l.id)}>
                         {openChatLead === l.id ? 'Close chat' : 'Chat'}
-                      </button>
-                      {openChatLead === l.id && (
+                      </button>}
+                      {chatAvailable && openChatLead === l.id && (
                         <div className="seller-chat-inline">
                           <Chat
                             db={db}
@@ -195,11 +232,14 @@ export default function SellerDashboard() {
           </div>
         )
       )}
-      {tab === 'chats' && (
+      {tab === 'chats' && chatAvailable && (
         <>
           {chatRoomsError && <div className="alert error">{chatRoomsError}</div>}
           {sellerChatItems.length === 0 ? (
-            <p className="muted">No buyer conversations yet. Conversations will appear here when buyers contact you about a listing.</p>
+            <Empty
+              title="No buyer conversations yet"
+              description="Conversations will appear here when buyers contact you about a listing."
+            />
           ) : (
             <div className="table-wrap card p-0">
               <table>
@@ -227,6 +267,9 @@ export default function SellerDashboard() {
               </table>
             </div>
           )}
+          {tab === 'chats' && !chatAvailable && (
+            <div className="alert info">{firebaseError || 'Chat is unavailable because Firebase is not configured.'}</div>
+          )}
           {activeChatItem && (
             <div className="mt-20">
               <Chat
@@ -242,7 +285,9 @@ export default function SellerDashboard() {
         </>
       )}
       {tab === 'viewings' && (
-        appts.length === 0 ? <p className="muted">No viewing requests.</p> : (
+        appts.length === 0 ? (
+          <Empty title="No viewing requests" description="Buyer viewing requests will appear here." />
+        ) : (
           <div className="table-wrap card p-0">
             <table>
               <thead><tr><th>Property</th><th>Buyer</th><th>When</th><th>Status</th><th>Action</th></tr></thead>

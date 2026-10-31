@@ -1,0 +1,11 @@
+@use "../../constants";
+
+.form-control[type="file"]::file-selector-button {
+  margin-right: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-slate-100);
+  color: var(--color-slate-700);
+  cursor: pointer;
+}

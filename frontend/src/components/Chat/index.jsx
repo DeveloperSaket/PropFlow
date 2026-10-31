@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { getOrCreateChatRoom, listenToMessages, markChatRoomRead, sendMessage } from '../../firebase/chat.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import Spinner from '../../lib/Spinner/index.jsx';
+import Form, { Input } from '../../lib/Form/index.jsx';
+import Empty from '../Empty/index.jsx';
 
 function formatTimestamp(timestamp) {
 	if (!timestamp?.toDate) return 'Sending...';
@@ -23,6 +26,11 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 		let active = true;
 
 		async function initializeChat() {
+			if (!db) {
+				setError(firebaseError || 'Chat is unavailable because Firebase is not configured.');
+				setLoading(false);
+				return;
+			}
 			setLoading(true);
 			setError('');
 			try {
@@ -45,7 +53,7 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 			active = false;
 			unsubscribe?.();
 		};
-	}, [db, buyerId, sellerId, productId]);
+	}, [db, buyerId, sellerId, productId, firebaseError]);
 
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -78,9 +86,9 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 			</div>
 
 			<div className="chat-messages" aria-live="polite">
-				{loading && <p className="chat-placeholder">Opening secure chat...</p>}
+				{loading && <Spinner label="Opening secure chat" className="chat-loading" />}
 				{!loading && !messages.length && !error && (
-					<p className="chat-placeholder">No messages yet. Start the conversation.</p>
+					<Empty className="chat-empty" title="No messages yet" description="Start the conversation by sending a message." />
 				)}
 				{messages.map((message) => {
 					const ownMessage = message.sender_id === normalizedCurrentUserId;
@@ -97,19 +105,20 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 			</div>
 
 			{(error || firebaseError) && <p className="chat-error" role="alert">{error || firebaseError}</p>}
-			<form className="chat-form" onSubmit={handleSubmit}>
-				<input
+			<Form className="chat-form" onSubmit={handleSubmit}>
+				<Input
 					value={text}
 					onChange={(event) => setText(event.target.value)}
 					placeholder="Write a message..."
 					aria-label="Message"
+					fieldClassName="chat-input-field"
 					disabled={loading || sending || !room}
 					maxLength={2000}
 				/>
 				<button className="btn" type="submit" disabled={loading || sending || !text.trim() || !room}>
 					{sending ? 'Sending...' : 'Send'}
 				</button>
-			</form>
+			</Form>
 		</section>
 	);
 }

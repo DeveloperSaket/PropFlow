@@ -1,5 +1,6 @@
 node_modules
 backend/.env
+backend/uploads/
 frontend/.env.local
 *.service-account.json
 frontend/dist

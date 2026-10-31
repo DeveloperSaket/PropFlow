@@ -25,8 +25,7 @@ const app = express();
 app.set('trust proxy', true);
 app.use(cors({ origin: config.corsOrigin === '*' ? true : config.corsOrigin.split(',') }));
 app.use(express.json({ limit: '1mb' }));
-// Serve uploaded compliance docs (in production, protect / move to object storage)
-app.use('/uploads', express.static(config.uploadDir));
+app.use('/uploads/properties', express.static(config.propertyUploadDir));
 app.get('/api/health', (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);

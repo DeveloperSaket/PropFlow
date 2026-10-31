@@ -1,0 +1,43 @@
+:root {
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+
+  --color-blue-100: #dbeafe;
+  --color-blue-200: #bfdbfe;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-blue-800: #1e40af;
+  --color-blue-900: #1e3a8a;
+
+  --color-green-100: #dcfce7;
+  --color-green-700: #15803d;
+  --color-green-600: #16a34a;
+  --color-amber-100: #fef9c3;
+  --color-amber-700: #a16207;
+  --color-amber-600: #d97706;
+  --color-red-100: #fee2e2;
+  --color-red-700: #b91c1c;
+  --color-red-600: #dc2626;
+  --color-range-track: #dbe3ef;
+  --color-white: #fff;
+
+  --bg: var(--color-slate-900);
+  --panel: var(--color-white);
+  --muted: var(--color-slate-500);
+  --line: var(--color-slate-200);
+  --brand: var(--color-blue-600);
+  --brand-dark: var(--color-blue-700);
+  --green: var(--color-green-600);
+  --amber: var(--color-amber-600);
+  --red: var(--color-red-600);
+  --soft: var(--color-slate-100);
+}

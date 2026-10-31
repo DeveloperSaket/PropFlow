@@ -12,6 +12,8 @@ export const config = {
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   firebaseProjectId: process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || '',
   uploadDir: path.join(__dirname, '..', 'uploads'),
+  propertyUploadDir: path.join(__dirname, '..', 'uploads', 'properties'),
+  kycUploadDir: path.join(__dirname, '..', 'uploads', 'kyc'),
   admin: {
     email: process.env.ADMIN_EMAIL || 'admin@propflow.test',
     password: process.env.ADMIN_PASSWORD || 'Admin@12345',

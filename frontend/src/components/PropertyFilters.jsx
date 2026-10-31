@@ -1,5 +1,6 @@
 import { PROPERTY_TYPES } from '../constants/propertyTypes.js';
 import Range from '../lib/range/index.jsx';
+import Form, { Input, Select } from '../lib/Form/index.jsx';
 
 export const PRICE_MIN = 0;
 export const PRICE_MAX = 50_000_000;
@@ -22,30 +23,26 @@ export default function PropertyFilters({ filters, onFilterChange, onApply, onRe
   };
 
   return (
-    <form className="card mb-20 property-filters" onSubmit={onApply}>
+    <Form className="card mb-20 property-filters" onSubmit={onApply}>
       <div className="property-filter-fields">
         <div className="property-filter-search">
-          <label htmlFor="property-search">Search</label>
-          <input id="property-search" value={filters.q} onChange={set('q')} placeholder="Title, address…" />
+          <Input id="property-search" label="Search" value={filters.q} onChange={set('q')} placeholder="Title, address…" />
         </div>
         <div>
-          <label htmlFor="property-type">Type</label>
-          <select id="property-type" value={filters.type} onChange={set('type')}>
+          <Select id="property-type" label="Type" value={filters.type} onChange={set('type')}>
             <option value="">Any</option>
             {PROPERTY_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
-          </select>
+          </Select>
         </div>
         <div>
-          <label htmlFor="property-listing">For</label>
-          <select id="property-listing" value={filters.listing} onChange={set('listing')}>
+          <Select id="property-listing" label="For" value={filters.listing} onChange={set('listing')}>
             <option value="">Any</option>
             <option value="sale">Sale</option>
             <option value="rent">Lease</option>
-          </select>
+          </Select>
         </div>
         <div>
-          <label htmlFor="property-city">City</label>
-          <input id="property-city" value={filters.city} onChange={set('city')} placeholder="e.g. Toronto" />
+          <Input id="property-city" label="City" value={filters.city} onChange={set('city')} placeholder="e.g. Toronto" />
         </div>
       </div>
       <div className="property-filter-options">
@@ -58,22 +55,20 @@ export default function PropertyFilters({ filters, onFilterChange, onApply, onRe
           <Range values={PRICE_STEPS} valueMin={minPrice} valueMax={maxPrice} onChange={setPriceRange} />
         </div>
         <div>
-          <label htmlFor="property-bedrooms">Min beds</label>
-          <input id="property-bedrooms" type="number" min="0" value={filters.bedrooms} onChange={set('bedrooms')} />
+          <Input id="property-bedrooms" label="Min beds" type="number" min="0" value={filters.bedrooms} onChange={set('bedrooms')} />
         </div>
         <div>
-          <label htmlFor="property-sort">Sort</label>
-          <select id="property-sort" value={filters.sort} onChange={set('sort')}>
+          <Select id="property-sort" label="Sort" value={filters.sort} onChange={set('sort')}>
             <option value="newest">Newest</option>
             <option value="price_asc">Price: low to high</option>
             <option value="price_desc">Price: high to low</option>
-          </select>
+          </Select>
         </div>
         <div className="property-filter-actions">
           <button className="btn" type="submit">Apply</button>
           <button className="btn secondary" type="button" onClick={onReset}>Reset</button>
         </div>
       </div>
-    </form>
+    </Form>
   );
 }
