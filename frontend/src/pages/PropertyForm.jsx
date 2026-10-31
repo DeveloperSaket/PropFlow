@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { propertyQueries, queryKeys } from '../api/queries.js';
@@ -28,8 +28,9 @@ export default function PropertyForm() {
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [err, setErr] = useState('');
+  const initializedPropertyId = useRef(null);
   useEffect(() => {
-    if (!propertyQuery.data) return;
+    if (!propertyQuery.data || initializedPropertyId.current === id) return;
     const p = propertyQuery.data;
     setForm({
       title: p.title || '', description: p.description || '',
@@ -39,7 +40,8 @@ export default function PropertyForm() {
       address: p.address || '', city: p.city || '', state: p.state || '',
       pincode: p.pincode || '', images: (p.images || []).join(', '),
     });
-  }, [propertyQuery.data]);
+    initializedPropertyId.current = id;
+  }, [id, propertyQuery.data]);
   const submitMutation = useMutation({
     mutationFn: ({ formData }) => api.upload(`/properties${editing ? `/${id}` : ''}`, formData, editing ? 'PUT' : 'POST'),
     onSuccess: async () => {

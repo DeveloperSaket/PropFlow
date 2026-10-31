@@ -67,7 +67,7 @@ export default function SellerDashboard() {
         ? [queryKeys.properties.all, queryKeys.admin.stats]
         : variables.kind === 'interest'
           ? [queryKeys.interests.all, queryKeys.properties.all, queryKeys.admin.stats]
-          : [queryKeys.appointments.all, queryKeys.admin.stats];
+          : [queryKeys.appointments.all, queryKeys.admin.stats, queryKeys.admin.appointments];
       return Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
     },
   });

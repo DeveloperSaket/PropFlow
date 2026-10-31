@@ -29,6 +29,7 @@ export function AuthProvider({ children }) {
   const refresh = useCallback(async () => {
     if (!getToken()) {
       setUser(null);
+      queryClient.clear();
       if (auth) await signOut(auth).catch(() => {});
       setLoading(false);
       return;

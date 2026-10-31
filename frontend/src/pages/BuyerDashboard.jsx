@@ -60,7 +60,7 @@ export default function BuyerDashboard() {
         : queryKeys.appointments.mine(user.id, 'buyer');
       const keys = variables.endpoint === 'interests'
         ? [key, queryKeys.interests.all, queryKeys.properties.all, queryKeys.admin.stats]
-        : [key, queryKeys.appointments.all, queryKeys.admin.stats];
+        : [key, queryKeys.appointments.all, queryKeys.admin.stats, queryKeys.admin.appointments];
       return Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
     },
   });

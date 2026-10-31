@@ -40,6 +40,7 @@ export default function PropertyDetail() {
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.appointments }),
       ]);
     },
   });
