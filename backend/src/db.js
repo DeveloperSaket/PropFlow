@@ -5,6 +5,8 @@ import { config } from './config.js';
 // Ensure data + upload directories exist
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 fs.mkdirSync(config.uploadDir, { recursive: true });
+fs.mkdirSync(config.propertyUploadDir, { recursive: true });
+fs.mkdirSync(config.kycUploadDir, { recursive: true });
 export const db = new DatabaseSync(config.dbPath);
 // Pragmas for reliability / concurrency
 db.exec('PRAGMA journal_mode = WAL;');
@@ -193,4 +195,22 @@ export function initSchema() {
       db.exec('PRAGMA foreign_keys = ON');
     }
   }
+
+  for (const [prefix, destination] of [
+    ['property_', config.propertyUploadDir],
+    ['kyc_', config.kycUploadDir],
+  ]) {
+    for (const entry of fs.readdirSync(config.uploadDir, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.startsWith(prefix)) continue;
+      fs.renameSync(
+        path.join(config.uploadDir, entry.name),
+        path.join(destination, entry.name)
+      );
+    }
+  }
+  db.prepare(`
+    UPDATE property_images
+    SET url = '/uploads/properties/' || substr(url, 10)
+    WHERE url GLOB '/uploads/property_*'
+  `).run();
 }
