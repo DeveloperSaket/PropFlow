@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getOrCreateChatRoom, listenToMessages, markChatRoomRead, sendMessage } from '../../firebase/chat.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import Spinner from '../../lib/Spinner/index.jsx';
 
 function formatTimestamp(timestamp) {
 	if (!timestamp?.toDate) return 'Sending...';
@@ -83,7 +84,7 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 			</div>
 
 			<div className="chat-messages" aria-live="polite">
-				{loading && <p className="chat-placeholder">Opening secure chat...</p>}
+				{loading && <Spinner label="Opening secure chat" className="chat-loading" />}
 				{!loading && !messages.length && !error && (
 					<p className="chat-placeholder">No messages yet. Start the conversation.</p>
 				)}

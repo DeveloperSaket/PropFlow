@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import PropertyCard from '../components/PropertyCard.jsx';
 import PropertyFilters, { PRICE_MAX, PRICE_MIN } from '../components/PropertyFilters.jsx';
-import { Spinner } from '../components/ui.jsx';
+import Spinner from '../lib/Spinner/index.jsx';
 
 const empty = {
   q: '', type: '', listing: '', city: '', minPrice: PRICE_MIN, maxPrice: PRICE_MAX, bedrooms: '', sort: 'newest',

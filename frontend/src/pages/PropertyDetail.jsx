@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../api/client.js';
-import { Badge, Alert, Spinner, formatMoney } from '../components/ui.jsx';
+import { Badge, Alert, formatMoney } from '../components/ui.jsx';
+import Spinner from '../lib/Spinner/index.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Chat from '../components/Chat/index.jsx';
 import { db } from '../firebase/index.js';

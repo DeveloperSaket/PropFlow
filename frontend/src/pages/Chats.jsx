@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
-import { Spinner } from '../components/ui.jsx';
+import Spinner from '../lib/Spinner/index.jsx';
 import Chat from '../components/Chat/index.jsx';
 import ChatConversationCard from '../components/ChatConversationCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
