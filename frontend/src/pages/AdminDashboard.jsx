@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { Badge, Stat, formatMoney } from '../components/ui.jsx';
 import Spinner from '../lib/Spinner/index.jsx';
+import { Input } from '../lib/Form/index.jsx';
 export default function AdminDashboard() {
   const [tab, setTab] = useState('overview');
   const [stats, setStats] = useState(null);
@@ -85,11 +86,12 @@ export default function AdminDashboard() {
                 <div className="muted font-size-13">
                   Seller: {p.seller_name} ({p.seller_email}) — KYC <Badge value={p.seller_kyc} />
                 </div>
-                <div className="field mt-10">
-                  <input placeholder="Rejection reason (if rejecting)"
-                    value={reason[p.id] || ''}
-                    onChange={(e) => setReason((r) => ({ ...r, [p.id]: e.target.value }))} />
-                </div>
+                <Input
+                  label="Rejection reason (if rejecting)"
+                  fieldClassName="mt-10"
+                  value={reason[p.id] || ''}
+                  onChange={(e) => setReason((r) => ({ ...r, [p.id]: e.target.value }))}
+                />
                 <div className="flex">
                   <button className="btn green small" onClick={() => review(p.id, 'approve')}>Approve</button>
                   <button className="btn danger small" onClick={() => review(p.id, 'reject')}>Reject</button>

@@ -1,0 +1,5 @@
+@use "../../constants";
+
+.form-control[rows] {
+  resize: vertical;
+}

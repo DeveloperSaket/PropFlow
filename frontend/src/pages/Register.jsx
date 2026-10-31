@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert } from '../components/ui.jsx';
+import Form, { Checkbox, Input, PhoneInput } from '../lib/Form/index.jsx';
 export default function Register() {
   const { register } = useAuth();
   const nav = useNavigate();
@@ -24,38 +25,26 @@ export default function Register() {
     <div className="container max-width-480">
       <h1 className="page-title">Create your account</h1>
       <p className="subtle">One account gives you access to both buying and listing properties.</p>
-      <form className="card" onSubmit={submit}>
+      <Form className="card" onSubmit={submit}>
         <Alert type="error">{err}</Alert>
-        <div className="field">
-          <label>Full name</label>
-          <input value={form.name} onChange={set('name')} required />
-        </div>
-        <div className="field">
-          <label>Email</label>
-          <input type="email" value={form.email} onChange={set('email')} required />
-        </div>
-        <div className="field">
-          <label>Phone</label>
-          <input value={form.phone} onChange={set('phone')} placeholder="Optional" />
-        </div>
-        <div className="field">
-          <label>Password</label>
-          <input type="password" value={form.password} onChange={set('password')} required minLength={8} />
-          <small className="muted">At least 8 characters.</small>
-        </div>
-        <div className="field flex gap-8">
-          <input type="checkbox" className="w-auto" checked={form.acceptTerms} onChange={set('acceptTerms')} id="terms" />
-          <label htmlFor="terms" className="m-0">
-            I accept the Terms of Service &amp; Compliance policy (KYC may be required).
-          </label>
-        </div>
+        <Input label="Full name" autoComplete="name" value={form.name} onChange={set('name')} required />
+        <Input label="Email" type="email" autoComplete="email" value={form.email} onChange={set('email')} required />
+        <PhoneInput label="Phone (optional)" value={form.phone} onChange={set('phone')} />
+        <Input label="Password" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} required minLength={8} hint="At least 8 characters." />
+        <Checkbox
+          id="terms"
+          label={<>I accept the Terms of Service &amp; Compliance policy (KYC may be required).</>}
+          checked={form.acceptTerms}
+          onChange={set('acceptTerms')}
+          required
+        />
         <button className="btn w-full" disabled={busy}>
           {busy ? 'Creating…' : 'Create account'}
         </button>
         <p className="muted center mt-14">
           Already have an account? <Link to="/login">Log in</Link>
         </p>
-      </form>
+      </Form>
     </div>
   );
 }

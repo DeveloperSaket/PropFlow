@@ -77,6 +77,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--color-blue-
   margin-top: var(--space-6);
 }
 .property-filter-fields > *, .property-filter-options > * { min-width: 0; }
+.property-filter-fields .form-field, .property-filter-options .form-field { margin-bottom: 0; }
 .property-filter-fields input, .property-filter-fields select,
 .property-filter-options input, .property-filter-options select { min-width: 0; }
 .filter-label { display: block; font-size: var(--font-size-compact); font-weight: var(--font-weight-medium); margin-bottom: var(--space-2); color: var(--color-slate-700); }
@@ -147,6 +148,7 @@ th { color: var(--muted); font-size: var(--font-size-sm); text-transform: upperc
 .chat-message p { margin: 0 0 var(--space-2); white-space: pre-wrap; overflow-wrap: anywhere; }
 .chat-message time { display: block; font-size: var(--font-size-2xs); opacity: .72; }
 .chat-form { display: flex; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--line); }
+.chat-form .chat-input-field { flex: 1; min-width: 0; margin: 0; }
 .chat-form input { flex: 1; min-width: 0; }
 .chat-error { margin: 0; padding: 9px var(--space-9); color: var(--color-red-700); background: var(--color-red-100); font-size: var(--font-size-compact); }
 .seller-chat-inline { position: fixed; right: 22px; bottom: var(--space-9); z-index: var(--z-overlay); width: min(420px, calc(100vw - 44px)); box-shadow: var(--shadow-lg); }

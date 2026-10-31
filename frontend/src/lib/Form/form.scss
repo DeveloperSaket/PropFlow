@@ -1,0 +1,55 @@
+@use "../constants";
+
+.form {
+  min-width: 0;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-slate-700);
+  font-size: var(--font-size-compact);
+  font-weight: var(--font-weight-medium);
+}
+
+.form-hint,
+.form-error {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: var(--font-size-compact);
+}
+
+.form-hint {
+  color: var(--muted);
+}
+
+.form-error {
+  color: var(--color-red-700);
+}
+
+.form-control[aria-invalid="true"] {
+  border-color: var(--color-red-600);
+}
+
+.form-checkbox-field {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.form-checkbox-field .form-label {
+  order: 1;
+  margin: 0;
+}
+
+.form-control.form-checkbox {
+  order: 0;
+  width: auto;
+  flex: 0 0 auto;
+  margin: var(--space-1) 0 0;
+  accent-color: var(--brand);
+}
+
+.form-control[type="file"] {
+  padding: var(--space-4);
+}

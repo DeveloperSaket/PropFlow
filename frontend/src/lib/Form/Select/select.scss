@@ -1,0 +1,5 @@
+@use "../../constants";
+
+.form-control:focus-visible {
+  outline-color: var(--color-blue-200);
+}

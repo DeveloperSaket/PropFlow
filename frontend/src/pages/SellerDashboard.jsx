@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { Badge, Stat, formatMoney } from '../components/ui.jsx';
 import Spinner from '../lib/Spinner/index.jsx';
+import { Select } from '../lib/Form/index.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Chat from '../components/Chat/index.jsx';
 import { db } from '../firebase/index.js';
@@ -172,12 +173,12 @@ export default function SellerDashboard() {
                     <td className="muted">{l.message || '—'}</td>
                     <td><Badge value={l.status} /></td>
                     <td>
-                      <select value={l.status} onChange={(e) => setLead(l.id, e.target.value)}>
+                      <Select label="Lead status" value={l.status} onChange={(e) => setLead(l.id, e.target.value)}>
                         <option value="new">new</option>
                         <option value="contacted">contacted</option>
                         <option value="negotiating">negotiating</option>
                         <option value="closed">closed</option>
-                      </select>
+                      </Select>
                       {chatAvailable && <button className="btn small mt-10" onClick={() => setOpenChatLead(openChatLead === l.id ? null : l.id)}>
                         {openChatLead === l.id ? 'Close chat' : 'Chat'}
                       </button>}
