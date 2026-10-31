@@ -22,5 +22,5 @@ export function formatMoney(n) {
   }).format(Number(n));
 }
 export function Spinner({ label = 'Loading…' }) {
-  return <p className="muted center" style={{ padding: 40 }}>{label}</p>;
+  return <p className="muted center" style={{ padding: 'var(--space-20)' }}>{label}</p>;
 }
