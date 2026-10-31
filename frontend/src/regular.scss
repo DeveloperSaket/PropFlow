@@ -32,23 +32,23 @@
 // ==============================
 
 .mb-6 {
-  margin-bottom: 6px;
+  margin-bottom: var(--space-3);
 }
 
 .mb-14 {
-  margin-bottom: 14px;
+  margin-bottom: var(--space-7);
 }
 
 .mb-18 {
-  margin-bottom: 18px;
+  margin-bottom: var(--space-9);
 }
 
 .mb-20 {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-10);
 }
 
 .mb-24 {
-  margin-bottom: 24px;
+  margin-bottom: var(--space-12);
 }
 
 .mb-30 {
@@ -56,23 +56,23 @@
 }
 
 .mt-10 {
-  margin-top: 10px;
+  margin-top: var(--space-5);
 }
 
 .mt-12 {
-  margin-top: 12px;
+  margin-top: var(--space-6);
 }
 
 .mt-14 {
-  margin-top: 14px;
+  margin-top: var(--space-7);
 }
 
 .mt-16 {
-  margin-top: 16px;
+  margin-top: var(--space-8);
 }
 
 .mt-20 {
-  margin-top: 20px;
+  margin-top: var(--space-10);
 }
 
 .mt-26 {
@@ -80,19 +80,19 @@
 }
 
 .mt-40 {
-  margin-top: 40px;
+  margin-top: var(--space-20);
 }
 
 .my-6 {
-  margin: 6px 0;
+  margin: var(--space-3) 0;
 }
 
 .my-14 {
-  margin: 14px 0;
+  margin: var(--space-7) 0;
 }
 
 .my-16-24 {
-  margin: 16px 0 24px;
+  margin: var(--space-8) 0 var(--space-12);
 }
 
 
@@ -101,20 +101,20 @@
 // ==============================
 
 .font-size-13 {
-  font-size: 13px;
+  font-size: var(--font-size-compact);
 }
 
 .font-size-18 {
-  font-size: 18px;
+  font-size: var(--font-size-lg);
 }
 
 .font-size-26 {
-  font-size: 26px;
+  font-size: var(--font-size-2xl);
 }
 
 .heading-brand {
-  font-size: 26px;
-  font-weight: 800;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-extrabold);
   color: var(--brand);
 }
 
@@ -128,7 +128,7 @@
 }
 
 .gap-8 {
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .flex-grow-2 {
@@ -148,17 +148,17 @@
 .flex-end-gap-8 {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .justify-center-gap-6 {
   justify-content: center;
-  margin-top: 20px;
-  gap: 6px;
+  margin-top: var(--space-10);
+  gap: var(--space-3);
 }
 
 .mt-14-align-start {
-  margin-top: 14px;
+  margin-top: var(--space-7);
   align-items: flex-start;
 }
 
@@ -176,7 +176,7 @@
 }
 
 .max-width-720 {
-  max-width: 720px;
+  max-width: var(--content-width);
 }
 
 .max-width-760 {
@@ -190,7 +190,7 @@
 
 .image-rounded-cover {
   width: 100%;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   max-height: 380px;
   object-fit: cover;
 }
@@ -199,5 +199,5 @@
   width: 90px;
   height: 66px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }

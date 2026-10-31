@@ -1,26 +1,29 @@
+@use "../lib/constants/breakpoints" as breakpoints;
+
 .nav {
+  --nav-text: var(--color-white);
   background: var(--bg);
-  color: #fff;
+  color: var(--nav-text);
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: var(--space-9);
   padding: 0 22px;
   height: 58px;
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: var(--z-sticky);
 }
-.nav .brand { font-weight: 800; font-size: 20px; color: #fff; }
-.nav .brand span { color: #60a5fa; }
-.nav a { color: #cbd5e1; font-size: 14px; }
-.nav a.active, .nav a:hover { color: #fff; text-decoration: none; }
-.nav-menu { display: flex; align-items: center; gap: 18px; flex: 1; min-width: 0; }
-.nav-links, .nav-actions { display: flex; align-items: center; gap: 18px; }
+.nav .brand { font-weight: var(--font-weight-extrabold); font-size: var(--font-size-xl); color: var(--nav-text); }
+.nav .brand span { color: var(--color-blue-500); }
+.nav a { color: var(--color-slate-300); font-size: var(--font-size-base); }
+.nav a.active, .nav a:hover { color: var(--nav-text); text-decoration: none; }
+.nav-menu { display: flex; align-items: center; gap: var(--space-9); flex: 1; min-width: 0; }
+.nav-links, .nav-actions { display: flex; align-items: center; gap: var(--space-9); }
 .nav .spacer { flex: 1; }
 .nav-menu-toggle { display: none; }
 .nav .pill {
-  background: #1e293b; padding: 4px 10px; border-radius: 999px; font-size: 12px;
-  color: #93c5fd;
+  background: var(--color-slate-800); padding: var(--space-2) var(--space-5); border-radius: var(--radius-pill); font-size: var(--font-size-sm);
+  color: var(--color-blue-200);
 }
 .nav .nav-unread {
   display: inline-flex;
@@ -30,14 +33,14 @@
   height: 18px;
   margin-left: 6px;
   padding: 0 5px;
-  border-radius: 999px;
-  background: #dc2626;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
+  border-radius: var(--radius-pill);
+  background: var(--red);
+  color: var(--color-white);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
 }
 
-@media (max-width: 600px) {
+@media (max-width: breakpoints.$breakpoint-sm) {
   .nav { justify-content: space-between; padding: 0 16px; }
   .nav-menu-toggle {
     display: flex;
@@ -47,16 +50,16 @@
     width: 40px;
     height: 40px;
     padding: 8px;
-    border: 1px solid #475569;
+    border: var(--border-width) solid var(--color-slate-600);
     border-radius: 6px;
     background: transparent;
     cursor: pointer;
   }
-  .nav-menu-toggle span { width: 100%; height: 2px; background: #fff; }
-  .nav-menu { display: none; position: absolute; top: 58px; left: 0; right: 0; align-items: stretch; gap: 0; padding: 8px 16px 14px; background: var(--bg); box-shadow: 0 8px 14px rgba(15, 23, 42, .2); }
+  .nav-menu-toggle span { width: 100%; height: 2px; background: var(--nav-text); }
+  .nav-menu { display: none; position: absolute; top: 58px; left: 0; right: 0; align-items: stretch; gap: 0; padding: var(--space-4) var(--space-8) var(--space-7); background: var(--bg); box-shadow: var(--shadow-md); }
   .nav-menu.open { display: flex; flex-direction: column; }
   .nav-links, .nav-actions { align-items: stretch; flex-direction: column; gap: 0; }
-  .nav-links a, .nav-actions a { display: block; padding: 11px 2px; }
+  .nav-links a, .nav-actions a { display: block; padding: 11px var(--space-1); }
   .nav .spacer { display: none; }
-  .nav .pill { max-width: 100%; overflow-wrap: anywhere; margin: 8px 0 4px; }
+  .nav .pill { max-width: 100%; overflow-wrap: anywhere; margin: var(--space-4) 0 var(--space-2); }
 }
