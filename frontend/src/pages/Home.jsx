@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import PropertyCard from '../components/PropertyCard.jsx';
-import { Spinner } from '../components/ui.jsx';
+import Spinner from '../lib/Spinner/index.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 export default function Home() {
   const { user } = useAuth();

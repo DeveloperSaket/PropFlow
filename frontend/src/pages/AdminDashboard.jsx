@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
-import { Badge, Stat, Spinner, formatMoney } from '../components/ui.jsx';
+import { Badge, Stat, formatMoney } from '../components/ui.jsx';
+import Spinner from '../lib/Spinner/index.jsx';
 export default function AdminDashboard() {
   const [tab, setTab] = useState('overview');
   const [stats, setStats] = useState(null);

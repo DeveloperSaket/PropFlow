@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
-import { Spinner } from './components/ui.jsx';
+import Spinner from './lib/Spinner/index.jsx';
 import Navbar from './components/Navbar.jsx';
 import Home from './pages/Home.jsx';
 import Browse from './pages/Browse.jsx';
