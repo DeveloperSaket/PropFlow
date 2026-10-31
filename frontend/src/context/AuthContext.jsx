@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { queryClient } from '../api/queryClient.js';
 import { api, setToken, getToken } from '../api/client.js';
 import { auth, db, firebaseError as firebaseInitError } from '../firebase/index.js';
 const AuthContext = createContext(null);
@@ -39,6 +40,7 @@ export function AuthProvider({ children }) {
     } catch {
       setToken(null);
       setUser(null);
+      queryClient.clear();
       if (auth) await signOut(auth).catch(() => {});
     } finally {
       setLoading(false);
@@ -49,6 +51,7 @@ export function AuthProvider({ children }) {
   }, [refresh]);
   const login = async (email, password) => {
     const { token, user } = await api.post('/auth/login', { email, password });
+    queryClient.clear();
     setToken(token);
     setUser(user);
     await connectFirebase();
@@ -56,6 +59,7 @@ export function AuthProvider({ children }) {
   };
   const register = async (payload) => {
     const { token, user } = await api.post('/auth/register', payload);
+    queryClient.clear();
     setToken(token);
     setUser(user);
     await connectFirebase();
@@ -64,6 +68,7 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setToken(null);
     setUser(null);
+    queryClient.clear();
     if (auth) signOut(auth).catch((error) => setFirebaseError(error.message));
   };
   return (

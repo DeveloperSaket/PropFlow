@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { api } from '../api/client.js';
+import { propertyQueries, queryKeys } from '../api/queries.js';
 import PropertyCard from '../components/PropertyCard.jsx';
 import Spinner from '../lib/Spinner/index.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { Alert } from '../components/ui.jsx';
 export default function Home() {
   const { user } = useAuth();
-  const [props, setProps] = useState(null);
-  useEffect(() => {
-    api.get('/properties?limit=6&sort=newest').then((r) => setProps(r.data)).catch(() => setProps([]));
-  }, []);
+  const { data: properties = [], isPending, error } = useQuery({
+    queryKey: queryKeys.properties.list('limit=6&sort=newest'),
+    queryFn: ({ signal }) => propertyQueries.list('limit=6&sort=newest', { signal }).then((response) => response.data),
+  });
   return (
     <div className="container">
       <div className="hero">
@@ -27,14 +28,19 @@ export default function Home() {
         <h2 className="m-0">Latest listings</h2>
         <Link to="/browse">View all →</Link>
       </div>
-      {props === null ? (
+      {isPending ? (
         <Spinner />
-      ) : props.length === 0 ? (
+      ) : error && !properties.length ? (
+        <Alert type="error">{error.message}</Alert>
+      ) : properties.length === 0 ? (
         <p className="muted">No approved listings yet.</p>
       ) : (
-        <div className="grid cols-3">
-          {props.map((p) => <PropertyCard key={p.id} p={p} />)}
-        </div>
+        <>
+          {error && <Alert type="error">{error.message}</Alert>}
+          <div className="grid cols-3">
+            {properties.map((p) => <PropertyCard key={p.id} p={p} />)}
+          </div>
+        </>
       )}
       <div className="grid cols-3 mt-40">
         <div className="card">

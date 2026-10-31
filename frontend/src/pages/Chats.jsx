@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api } from '../api/client.js';
+import { useQueries, useQuery } from '@tanstack/react-query';
+import { interestQueries, propertyQueries as propertyApiQueries, queryKeys } from '../api/queries.js';
 import Spinner from '../lib/Spinner/index.jsx';
 import Chat from '../components/Chat/index.jsx';
 import ChatConversationCard from '../components/ChatConversationCard.jsx';
@@ -18,9 +19,6 @@ export default function Chats() {
   const view = searchParams.get('view') === 'seller' ? 'seller' : 'buyer';
   const [buyerRooms, setBuyerRooms] = useState(null);
   const [sellerRooms, setSellerRooms] = useState(null);
-  const [buyerInterests, setBuyerInterests] = useState([]);
-  const [sellerLeads, setSellerLeads] = useState([]);
-  const [propertyData, setPropertyData] = useState({});
   const [activeChatKey, setActiveChatKey] = useState(null);
   const [buyerError, setBuyerError] = useState('');
   const [sellerError, setSellerError] = useState('');
@@ -72,38 +70,28 @@ export default function Chats() {
     };
   }, [user.id, chatAvailable, firebaseError]);
 
-  useEffect(() => {
-    api.get('/interests/mine')
-      .then((response) => setBuyerInterests(response.data))
-      .catch(() => setBuyerInterests([]));
-    api.get('/interests/received')
-      .then((response) => setSellerLeads(response.data))
-      .catch(() => setSellerLeads([]));
-  }, [user.id]);
+  const sellerLeadsQuery = useQuery({
+    queryKey: queryKeys.interests.received(user.id),
+    queryFn: interestQueries.received,
+  });
+  const sellerLeads = sellerLeadsQuery.data || [];
 
   const propertyIds = [...new Set([
     ...(buyerRooms || []).map((room) => String(room.product_id)),
     ...(sellerRooms || []).map((room) => String(room.product_id)),
   ])].sort().join(',');
 
-  useEffect(() => {
-    if (!propertyIds) {
-      setPropertyData({});
-      return undefined;
-    }
-    let active = true;
-    Promise.all(propertyIds.split(',').map(async (propertyId) => {
-      try {
-        const response = await api.get(`/properties/${propertyId}`);
-        return [propertyId, response.data];
-      } catch {
-        return [propertyId, null];
-      }
-    })).then((entries) => {
-      if (active) setPropertyData(Object.fromEntries(entries));
-    });
-    return () => { active = false; };
-  }, [propertyIds]);
+  const propertyIdList = propertyIds ? propertyIds.split(',') : [];
+  const propertyQueries = useQueries({
+    queries: propertyIdList.map((propertyId) => ({
+      queryKey: queryKeys.properties.detail(propertyId),
+      queryFn: ({ signal }) => propertyApiQueries.detail(propertyId, { signal }),
+    })),
+  });
+  const propertyData = Object.fromEntries(propertyIdList.map((propertyId, index) => [
+    propertyId,
+    propertyQueries[index]?.data || null,
+  ]));
 
   const buyerItems = (buyerRooms || []).map((room) => ({
     key: `buyer:${room.id}`,
@@ -146,7 +134,9 @@ export default function Chats() {
       })),
   ];
   const items = view === 'buyer' ? buyerItems : sellerItems;
-  const roomsLoading = view === 'buyer' ? buyerRooms === null : sellerRooms === null;
+  const roomsLoading = view === 'buyer'
+    ? buyerRooms === null
+    : sellerRooms === null || sellerLeadsQuery.isPending;
   const error = view === 'buyer' ? buyerError : sellerError;
   const rooms = view === 'buyer' ? buyerRooms || [] : sellerRooms || [];
   const unreadCount = getUnreadChatCount(rooms, user.id);
@@ -181,7 +171,8 @@ export default function Chats() {
         </button>
       </div>
       {error && <div className="alert error">{error}</div>}
-      {roomsLoading ? <Spinner /> : items.length === 0 ? (
+      {view === 'seller' && sellerLeadsQuery.error && <div className="alert error">{sellerLeadsQuery.error.message}</div>}
+      {roomsLoading ? <Spinner /> : view === 'seller' && sellerLeadsQuery.error && !sellerLeadsQuery.data ? null : items.length === 0 ? (
         <p className="muted">
           {view === 'buyer'
             ? <>No buyer conversations yet. <Link to="/browse">Browse properties</Link> to contact a seller.</>

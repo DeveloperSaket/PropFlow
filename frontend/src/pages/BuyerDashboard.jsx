@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
-import { Badge, Stat, formatMoney } from '../components/ui.jsx';
+import { appointmentQueries, interestQueries, propertyQueries, queryKeys } from '../api/queries.js';
+import { useMutation, useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
+import { Alert, Badge, Stat, formatMoney } from '../components/ui.jsx';
 import Spinner from '../lib/Spinner/index.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Chat from '../components/Chat/index.jsx';
@@ -11,17 +13,29 @@ export default function BuyerDashboard() {
   const { user, chatAvailable, firebaseError } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState(() => searchParams.get('tab') === 'chats' ? 'chats' : 'overview');
-  const [interests, setInterests] = useState(null);
-  const [appts, setAppts] = useState(null);
+  const queryClient = useQueryClient();
+  const { data: interests, isPending: interestsPending, error: interestsError } = useQuery({
+    queryKey: queryKeys.interests.mine(user.id),
+    queryFn: interestQueries.mine,
+  });
+  const { data: appts, isPending: appointmentsPending, error: appointmentsError } = useQuery({
+    queryKey: queryKeys.appointments.mine(user.id, 'buyer'),
+    queryFn: ({ signal }) => appointmentQueries.mine('buyer', { signal }),
+  });
   const [chatRooms, setChatRooms] = useState(null);
   const [chatRoomsError, setChatRoomsError] = useState('');
   const [activeChatRoomId, setActiveChatRoomId] = useState(null);
-  const [chatProperties, setChatProperties] = useState({});
-  const load = () => {
-    api.get('/interests/mine').then((r) => setInterests(r.data));
-    api.get('/appointments/mine?view=buyer').then((r) => setAppts(r.data));
-  };
-  useEffect(load, []);
+  const chatPropertyQueries = useQueries({
+    queries: (chatRooms || []).map((room) => ({
+      queryKey: queryKeys.properties.detail(room.product_id),
+      queryFn: ({ signal }) => propertyQueries.detail(room.product_id, { signal }),
+      enabled: Boolean(chatRooms),
+    })),
+  });
+  const chatProperties = Object.fromEntries((chatRooms || []).map((room, index) => [
+    room.id,
+    chatPropertyQueries[index]?.data || null,
+  ]));
   useEffect(() => {
     setTab(searchParams.get('tab') === 'chats' ? 'chats' : 'overview');
   }, [searchParams]);
@@ -38,34 +52,22 @@ export default function BuyerDashboard() {
       setChatRooms([]);
     }
   }, [user.id, chatAvailable, firebaseError]);
-  const chatPropertyIds = chatRooms?.map((room) => room.product_id).join(',') || '';
-  useEffect(() => {
-    if (!chatRooms?.length) {
-      setChatProperties({});
-      return undefined;
-    }
-    let active = true;
-    Promise.all(chatRooms.map(async (room) => {
-      try {
-        const response = await api.get(`/properties/${room.product_id}`);
-        return [room.id, response.data];
-      } catch {
-        return [room.id, null];
-      }
-    })).then((entries) => {
-      if (active) setChatProperties(Object.fromEntries(entries));
-    });
-    return () => { active = false; };
-  }, [chatPropertyIds]);
-  const withdraw = async (id) => {
-    await api.patch(`/interests/${id}/status`, { status: 'withdrawn' });
-    load();
-  };
-  const cancelAppt = async (id) => {
-    await api.patch(`/appointments/${id}/status`, { status: 'cancelled' });
-    load();
-  };
-  if (!interests || !appts) return <Spinner />;
+  const statusMutation = useMutation({
+    mutationFn: ({ endpoint, id, status }) => api.patch(`/${endpoint}/${id}/status`, { status }),
+    onSuccess: (_data, variables) => {
+      const key = variables.endpoint === 'interests'
+        ? queryKeys.interests.mine(user.id)
+        : queryKeys.appointments.mine(user.id, 'buyer');
+      const keys = variables.endpoint === 'interests'
+        ? [key, queryKeys.interests.all, queryKeys.properties.all, queryKeys.admin.stats]
+        : [key, queryKeys.appointments.all, queryKeys.admin.stats];
+      return Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+    },
+  });
+  if (interestsPending || appointmentsPending) return <Spinner />;
+  if ((interestsError && !interests) || (appointmentsError && !appts)) {
+    return <div className="container"><Alert type="error">{interestsError?.message || appointmentsError?.message}</Alert></div>;
+  }
   const active = interests.filter((i) => i.status !== 'withdrawn' && i.status !== 'closed').length;
   const upcoming = appts.filter((a) => ['requested', 'confirmed'].includes(a.status)).length;
   const unreadChatCount = getUnreadChatCount(chatRooms || [], user.id);
@@ -81,6 +83,8 @@ export default function BuyerDashboard() {
     <div className="container">
       <h1 className="page-title">Welcome, {user.name}</h1>
       <p className="subtle">Track your property interests and viewings.</p>
+      {(interestsError || appointmentsError) && <Alert type="error">{interestsError?.message || appointmentsError?.message}</Alert>}
+      {statusMutation.error && <Alert type="error">{statusMutation.error.message}</Alert>}
       <div className="tabs">
         <button type="button" className={`tab ${tab === 'overview' ? 'active' : ''}`} onClick={() => selectTab('overview')}>Overview</button>
         <button type="button" className={`tab ${tab === 'chats' ? 'active' : ''}`} onClick={() => selectTab('chats')}>
@@ -116,7 +120,7 @@ export default function BuyerDashboard() {
                   <td className="muted">{i.created_at}</td>
                   <td>
                     {i.status !== 'withdrawn' && i.status !== 'closed' && (
-                      <button className="btn small secondary" onClick={() => withdraw(i.id)}>Withdraw</button>
+                      <button className="btn small secondary" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ endpoint: 'interests', id: i.id, status: 'withdrawn' })}>Withdraw</button>
                     )}
                   </td>
                 </tr>
@@ -141,7 +145,7 @@ export default function BuyerDashboard() {
                   <td><Badge value={a.status} /></td>
                   <td>
                     {['requested', 'confirmed'].includes(a.status) && (
-                      <button className="btn small danger" onClick={() => cancelAppt(a.id)}>Cancel</button>
+                      <button className="btn small danger" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ endpoint: 'appointments', id: a.id, status: 'cancelled' })}>Cancel</button>
                     )}
                   </td>
                 </tr>
