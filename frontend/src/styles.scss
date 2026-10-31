@@ -1,21 +1,11 @@
-:root {
-  --bg: #0f172a;
-  --panel: #ffffff;
-  --muted: #64748b;
-  --line: #e2e8f0;
-  --brand: #2563eb;
-  --brand-dark: #1d4ed8;
-  --green: #16a34a;
-  --amber: #d97706;
-  --red: #dc2626;
-  --soft: #f1f5f9;
-}
+@use "./lib/constants";
+
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-  background: #f8fafc;
-  color: #0f172a;
+  font-family: var(--font-family-sans);
+  background: var(--color-slate-50);
+  color: var(--color-slate-900);
 }
 a { color: var(--brand); text-decoration: none; }
 a:hover { text-decoration: underline; }
