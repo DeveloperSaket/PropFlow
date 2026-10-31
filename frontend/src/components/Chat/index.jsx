@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getOrCreateChatRoom, listenToMessages, markChatRoomRead, sendMessage } from '../../firebase/chat.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Spinner from '../../lib/Spinner/index.jsx';
+import Form, { Input } from '../../lib/Form/index.jsx';
 
 function formatTimestamp(timestamp) {
 	if (!timestamp?.toDate) return 'Sending...';
@@ -103,19 +104,20 @@ export default function Chat({ db, currentUserId, buyerId, sellerId, productId, 
 			</div>
 
 			{(error || firebaseError) && <p className="chat-error" role="alert">{error || firebaseError}</p>}
-			<form className="chat-form" onSubmit={handleSubmit}>
-				<input
+			<Form className="chat-form" onSubmit={handleSubmit}>
+				<Input
 					value={text}
 					onChange={(event) => setText(event.target.value)}
 					placeholder="Write a message..."
 					aria-label="Message"
+					fieldClassName="chat-input-field"
 					disabled={loading || sending || !room}
 					maxLength={2000}
 				/>
 				<button className="btn" type="submit" disabled={loading || sending || !text.trim() || !room}>
 					{sending ? 'Sending...' : 'Send'}
 				</button>
-			</form>
+			</Form>
 		</section>
 	);
 }

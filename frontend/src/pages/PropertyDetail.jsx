@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import Chat from '../components/Chat/index.jsx';
 import { db } from '../firebase/index.js';
 import { getPropertyTypeLabel } from '../constants/propertyTypes.js';
+import { Input, Textarea } from '../lib/Form/index.jsx';
 export default function PropertyDetail() {
   const { id } = useParams();
   const { user, chatAvailable, firebaseError } = useAuth();
@@ -85,10 +86,7 @@ export default function PropertyDetail() {
               <p className="muted">Admin accounts cannot express buyer interest.</p>
             ) : (
               <>
-                <div className="field">
-                  <label>Message to seller (optional)</label>
-                  <textarea rows={3} value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="I'd like more details / a site visit…" />
-                </div>
+                <Textarea label="Message to seller (optional)" rows={3} value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="I'd like more details / a site visit…" />
                 <button className="btn" onClick={expressInterest}>Express interest</button>
               </>
             )}
@@ -97,10 +95,7 @@ export default function PropertyDetail() {
             <h3>Book a viewing</h3>
             {user && user.role !== 'admin' ? (
               <>
-                <div className="field">
-                  <label>Preferred date & time</label>
-                  <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
-                </div>
+                <Input label="Preferred date & time" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
                 <button className="btn green" disabled={!when} onClick={bookViewing}>Request viewing</button>
               </>
             ) : (

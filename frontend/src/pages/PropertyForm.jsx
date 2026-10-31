@@ -4,6 +4,7 @@ import { api } from '../api/client.js';
 import { Alert } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getPropertyTypeLabel, PROPERTY_TYPES } from '../constants/propertyTypes.js';
+import Form, { FileInput, Input, Select, Textarea } from '../lib/Form/index.jsx';
 const blank = {
   title: '', description: '', property_type: 'detached', listing_type: 'sale',
   price: '', area_sqft: '', bedrooms: '', bathrooms: '',
@@ -93,75 +94,61 @@ export default function PropertyForm() {
         <Alert type="info">Note: your KYC must be verified for listings to publish.</Alert>
       )}
       <Alert type="error">{err}</Alert>
-      <form className="card" onSubmit={(e) => { e.preventDefault(); submit(false); }}>
-        <div className="field">
-          <label>Title *</label>
-          <input value={form.title} onChange={set('title')} required placeholder="e.g. 3-bedroom Condo with Lake View" />
-        </div>
-        <div className="field">
-          <label>Description</label>
-          <textarea rows={4} value={form.description} onChange={set('description')} />
-        </div>
+      <Form className="card" onSubmit={(e) => { e.preventDefault(); submit(false); }}>
+        <Input label="Title" value={form.title} onChange={set('title')} required placeholder="e.g. 3-bedroom Condo with Lake View" />
+        <Textarea label="Description" rows={4} value={form.description} onChange={set('description')} />
         <div className="row">
-          <div className="field">
-            <label>Property type *</label>
-            <select value={form.property_type} onChange={set('property_type')}>
+            <Select label="Property type" value={form.property_type} onChange={set('property_type')} required>
               {!PROPERTY_TYPES.some((type) => type.value === form.property_type) && (
                 <option value={form.property_type}>{getPropertyTypeLabel(form.property_type)} (existing)</option>
               )}
               {PROPERTY_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label>Listing type *</label>
-            <select value={form.listing_type} onChange={set('listing_type')}>
+            </Select>
+            <Select label="Listing type" value={form.listing_type} onChange={set('listing_type')} required>
               <option value="sale">For sale</option>
               <option value="rent">For lease</option>
-            </select>
-          </div>
-          <div className="field">
-            <label>Price ($) *</label>
-            <input type="number" value={form.price} onChange={set('price')} required min="1" />
-          </div>
+            </Select>
+            <Input label="Price ($)" type="number" value={form.price} onChange={set('price')} required min="1" />
         </div>
         <div className="row">
-          <div className="field"><label>Area (sqft)</label><input type="number" value={form.area_sqft} onChange={set('area_sqft')} /></div>
-          <div className="field"><label>Bedrooms</label><input type="number" value={form.bedrooms} onChange={set('bedrooms')} /></div>
-          <div className="field"><label>Bathrooms</label><input type="number" value={form.bathrooms} onChange={set('bathrooms')} /></div>
+          <Input label="Area (sqft)" type="number" min="0" value={form.area_sqft} onChange={set('area_sqft')} />
+          <Input label="Bedrooms" type="number" min="0" step="1" value={form.bedrooms} onChange={set('bedrooms')} />
+          <Input label="Bathrooms" type="number" min="0" step="0.5" value={form.bathrooms} onChange={set('bathrooms')} />
         </div>
-        <div className="field"><label>Address</label><input value={form.address} onChange={set('address')} /></div>
+        <Input label="Address" autoComplete="street-address" value={form.address} onChange={set('address')} />
         <div className="row">
-          <div className="field"><label>City</label><input value={form.city} onChange={set('city')} /></div>
-          <div className="field"><label>Province</label><input value={form.state} onChange={set('state')} /></div>
-          <div className="field"><label>Postal code</label><input value={form.pincode} onChange={set('pincode')} /></div>
-        </div>
-        <div className="field">
-          <label>Image URLs (optional, comma-separated)</label>
-          <input value={form.images} onChange={set('images')} placeholder="https://… , https://…" />
-        </div>
-        <div className="field">
-          <label>Upload property images (optional)</label>
-          <input
-            type="file"
-            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-            multiple
-            onChange={selectImages}
+          <Input label="City" autoComplete="address-level2" value={form.city} onChange={set('city')} />
+          <Input label="Province" autoComplete="address-level1" value={form.state} onChange={set('state')} />
+          <Input
+            label="Postal code"
+            autoComplete="postal-code"
+            value={form.pincode}
+            onChange={set('pincode')}
+            pattern="[ABCEGHJ-NPRSTV-Z][0-9][ABCEGHJ-NPRSTV-Z][ -]?[0-9][ABCEGHJ-NPRSTV-Z][0-9]"
+            title="Enter a valid Canadian postal code, such as M5V 3L9."
           />
-          <small className="muted">JPG, JPEG, PNG, or WebP; up to 12 images, 5MB each. {imageFiles.length > 0 && `${imageFiles.length} selected.`}</small>
-          {imagePreviews.length > 0 && (
-            <div className="property-image-previews">
-              {imagePreviews.map((src, index) => (
-                <img key={src} src={src} alt={`Selected property image ${index + 1}`} />
-              ))}
-            </div>
-          )}
         </div>
+        <Input label="Image URLs (optional, comma-separated)" value={form.images} onChange={set('images')} placeholder="https://… , https://…" />
+        <FileInput
+          label="Upload property images (optional)"
+          hint={`JPG, JPEG, PNG, or WebP; up to 12 images, 5MB each. ${imageFiles.length > 0 ? `${imageFiles.length} selected.` : ''}`}
+          accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+          multiple
+          onChange={selectImages}
+        />
+        {imagePreviews.length > 0 && (
+          <div className="property-image-previews">
+            {imagePreviews.map((src, index) => (
+              <img key={src} src={src} alt={`Selected property image ${index + 1}`} />
+            ))}
+          </div>
+        )}
         <div className="flex">
           <button className="btn" disabled={busy}>{editing ? 'Save & submit for review' : 'Submit for review'}</button>
           {!editing && <button type="button" className="btn secondary" disabled={busy} onClick={() => submit(true)}>Save as draft</button>}
           <button type="button" className="btn secondary" onClick={() => nav('/seller')}>Cancel</button>
         </div>
-      </form>
+      </Form>
     </div>
   );
 }

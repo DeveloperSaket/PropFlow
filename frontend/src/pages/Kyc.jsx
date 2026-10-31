@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import { Badge, Alert } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import Form, { FileInput, Select } from '../lib/Form/index.jsx';
 export default function Kyc() {
   const { user, refresh } = useAuth();
   const [docs, setDocs] = useState([]);
@@ -45,24 +46,18 @@ export default function Kyc() {
       {status === 'verified' ? (
         <Alert type="success">Your identity is verified. You're all set!</Alert>
       ) : (
-        <form className="card" onSubmit={submit}>
+        <Form className="card" onSubmit={submit}>
           <Alert type="error">{err}</Alert>
           <Alert type="success">{ok}</Alert>
-          <div className="field">
-            <label>Document type</label>
-            <select value={docType} onChange={(e) => setDocType(e.target.value)}>
+            <Select label="Document type" value={docType} onChange={(e) => setDocType(e.target.value)} required>
               <option value="national_id">National ID</option>
               <option value="passport">Passport</option>
               <option value="driving_license">Driving License</option>
               <option value="property_deed">Property Deed (sellers)</option>
-            </select>
-          </div>
-          <div className="field">
-            <label>Upload document (PDF/PNG/JPG, max 5MB)</label>
-            <input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setFile(e.target.files[0])} />
-          </div>
+            </Select>
+            <FileInput label="Upload document (PDF/PNG/JPG, max 5MB)" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setFile(e.target.files[0])} required />
           <button className="btn" disabled={busy}>{busy ? 'Uploading…' : 'Submit for review'}</button>
-        </form>
+        </Form>
       )}
       <h3 className="mt-26">Submitted documents</h3>
       {docs.length === 0 ? (
