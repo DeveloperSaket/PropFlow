@@ -1,0 +1,41 @@
+.account-terms {
+  max-width: 860px;
+}
+
+.account-terms-header .eyebrow {
+  margin: 0 0 var(--space-2);
+  color: var(--brand);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.account-terms-document {
+  line-height: 1.65;
+}
+
+.account-terms-document section + section {
+  margin-top: var(--space-8);
+}
+
+.account-terms-document h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-lg);
+}
+
+.account-terms-document p {
+  margin: 0 0 var(--space-5);
+}
+
+.account-terms-document p:last-child {
+  margin-bottom: 0;
+}
+
+.account-terms-document .account-terms-draft {
+  padding: var(--space-5);
+  border-left: 4px solid var(--brand);
+  border-radius: var(--radius-sm);
+  background: var(--color-blue-100);
+  color: var(--color-blue-800);
+}

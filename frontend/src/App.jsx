@@ -1,6 +1,7 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
-import { Spinner } from './components/ui.jsx';
+import Spinner from './lib/Spinner/index.jsx';
 import Navbar from './components/Navbar.jsx';
 import Home from './pages/Home.jsx';
 import Browse from './pages/Browse.jsx';
@@ -13,6 +14,7 @@ import Chats from './pages/Chats.jsx';
 import PropertyForm from './pages/PropertyForm.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import Kyc from './pages/Kyc.jsx';
+const AccountTerms = lazy(() => import('./pages/AccountTerms.jsx'));
 function Protected({ children, roles }) {
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
@@ -20,6 +22,14 @@ function Protected({ children, roles }) {
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
   return children;
 }
+
+function GuestOnly({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <Spinner />;
+  if (user) return <Navigate to="/" replace />;
+  return children;
+}
+
 export default function App() {
   return (
     <>
@@ -28,8 +38,16 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/browse" element={<Browse />} />
         <Route path="/properties/:id" element={<PropertyDetail />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
+        <Route path="/register" element={<GuestOnly><Register /></GuestOnly>} />
+        <Route
+          path="/static/compliance/account-terms-and-condition"
+          element={
+            <Suspense fallback={<div className="container">Loading terms…</div>}>
+              <AccountTerms />
+            </Suspense>
+          }
+        />
         <Route path="/kyc" element={<Protected roles={['member']}><Kyc /></Protected>} />
         <Route path="/buyer" element={<Protected roles={['member']}><BuyerDashboard /></Protected>} />
         <Route path="/seller" element={<Protected roles={['member']}><SellerDashboard /></Protected>} />

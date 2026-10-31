@@ -7,7 +7,7 @@ export function setToken(t) {
   if (t) localStorage.setItem(TOKEN_KEY, t);
   else localStorage.removeItem(TOKEN_KEY);
 }
-async function request(method, path, body, { isForm = false } = {}) {
+async function request(method, path, body, { isForm = false, signal } = {}) {
   const headers = {};
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -18,7 +18,7 @@ async function request(method, path, body, { isForm = false } = {}) {
     headers['Content-Type'] = 'application/json';
     payload = JSON.stringify(body);
   }
-  const res = await fetch(`/api${path}`, { method, headers, body: payload });
+  const res = await fetch(`/api${path}`, { method, headers, body: payload, signal });
   const text = await res.text();
   const data = text ? JSON.parse(text) : {};
   if (!res.ok) {
@@ -30,10 +30,10 @@ async function request(method, path, body, { isForm = false } = {}) {
   return data;
 }
 export const api = {
-  get: (p) => request('GET', p),
+  get: (p, options) => request('GET', p, undefined, options),
   post: (p, b) => request('POST', p, b),
   put: (p, b) => request('PUT', p, b),
   patch: (p, b) => request('PATCH', p, b),
   del: (p) => request('DELETE', p),
-  upload: (p, formData) => request('POST', p, formData, { isForm: true }),
+  upload: (p, formData, method = 'POST', options = {}) => request(method, p, formData, { ...options, isForm: true }),
 };

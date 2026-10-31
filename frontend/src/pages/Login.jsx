@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert } from '../components/ui.jsx';
+import Form, { Input } from '../lib/Form/index.jsx';
 const dest = { member: '/buyer', admin: '/admin' };
 export default function Login() {
   const { login } = useAuth();
@@ -23,21 +24,15 @@ export default function Login() {
     <div className="container max-width-440">
       <h1 className="page-title">Log in</h1>
       <p className="subtle">Welcome back to PropFlow.</p>
-      <form className="card" onSubmit={submit}>
+      <Form className="card" onSubmit={submit}>
         <Alert type="error">{err}</Alert>
-        <div className="field">
-          <label>Email</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </div>
-        <div className="field">
-          <label>Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </div>
+        <Input label="Email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input label="Password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         <button className="btn w-full" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
         <p className="muted center mt-14">
           No account? <Link to="/register">Sign up</Link>
         </p>
-      </form>
+      </Form>
       <div className="card mt-16">
         <strong>Demo accounts</strong>
         <p className="muted font-size-13">Click to autofill, then press Log in:</p>

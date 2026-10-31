@@ -9,7 +9,7 @@ import { required, HttpError } from '../utils/validate.js';
 import { audit } from '../utils/audit.js';
 const router = Router();
 const storage = multer.diskStorage({
-  destination: config.uploadDir,
+  destination: config.kycUploadDir,
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `kyc_${req.user.id}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}${ext}`);

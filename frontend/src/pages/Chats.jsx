@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api } from '../api/client.js';
-import { Spinner } from '../components/ui.jsx';
+import { useQueries, useQuery } from '@tanstack/react-query';
+import { interestQueries, propertyQueries as propertyApiQueries, queryKeys } from '../api/queries.js';
+import Spinner from '../lib/Spinner/index.jsx';
 import Chat from '../components/Chat/index.jsx';
 import ChatConversationCard from '../components/ChatConversationCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { db } from '../firebase/index.js';
+import Empty from '../components/Empty/index.jsx';
 import {
   getUnreadChatCount,
   listenToBuyerChatRooms,
@@ -13,19 +15,23 @@ import {
 } from '../firebase/chat.js';
 
 export default function Chats() {
-  const { user } = useAuth();
+  const { user, chatAvailable, firebaseError } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const view = searchParams.get('view') === 'seller' ? 'seller' : 'buyer';
   const [buyerRooms, setBuyerRooms] = useState(null);
   const [sellerRooms, setSellerRooms] = useState(null);
-  const [buyerInterests, setBuyerInterests] = useState([]);
-  const [sellerLeads, setSellerLeads] = useState([]);
-  const [propertyData, setPropertyData] = useState({});
   const [activeChatKey, setActiveChatKey] = useState(null);
   const [buyerError, setBuyerError] = useState('');
   const [sellerError, setSellerError] = useState('');
 
   useEffect(() => {
+    if (!chatAvailable || !db) {
+      setBuyerRooms([]);
+      setSellerRooms([]);
+      setBuyerError(firebaseError);
+      setSellerError(firebaseError);
+      return undefined;
+    }
     let unsubscribeBuyer;
     let unsubscribeSeller;
     try {
@@ -63,40 +69,30 @@ export default function Chats() {
       unsubscribeBuyer?.();
       unsubscribeSeller?.();
     };
-  }, [user.id]);
+  }, [user.id, chatAvailable, firebaseError]);
 
-  useEffect(() => {
-    api.get('/interests/mine')
-      .then((response) => setBuyerInterests(response.data))
-      .catch(() => setBuyerInterests([]));
-    api.get('/interests/received')
-      .then((response) => setSellerLeads(response.data))
-      .catch(() => setSellerLeads([]));
-  }, [user.id]);
+  const sellerLeadsQuery = useQuery({
+    queryKey: queryKeys.interests.received(user.id),
+    queryFn: interestQueries.received,
+  });
+  const sellerLeads = sellerLeadsQuery.data || [];
 
   const propertyIds = [...new Set([
     ...(buyerRooms || []).map((room) => String(room.product_id)),
     ...(sellerRooms || []).map((room) => String(room.product_id)),
   ])].sort().join(',');
 
-  useEffect(() => {
-    if (!propertyIds) {
-      setPropertyData({});
-      return undefined;
-    }
-    let active = true;
-    Promise.all(propertyIds.split(',').map(async (propertyId) => {
-      try {
-        const response = await api.get(`/properties/${propertyId}`);
-        return [propertyId, response.data];
-      } catch {
-        return [propertyId, null];
-      }
-    })).then((entries) => {
-      if (active) setPropertyData(Object.fromEntries(entries));
-    });
-    return () => { active = false; };
-  }, [propertyIds]);
+  const propertyIdList = propertyIds ? propertyIds.split(',') : [];
+  const propertyQueries = useQueries({
+    queries: propertyIdList.map((propertyId) => ({
+      queryKey: queryKeys.properties.detail(propertyId),
+      queryFn: ({ signal }) => propertyApiQueries.detail(propertyId, { signal }),
+    })),
+  });
+  const propertyData = Object.fromEntries(propertyIdList.map((propertyId, index) => [
+    propertyId,
+    propertyQueries[index]?.data || null,
+  ]));
 
   const buyerItems = (buyerRooms || []).map((room) => ({
     key: `buyer:${room.id}`,
@@ -139,7 +135,9 @@ export default function Chats() {
       })),
   ];
   const items = view === 'buyer' ? buyerItems : sellerItems;
-  const roomsLoading = view === 'buyer' ? buyerRooms === null : sellerRooms === null;
+  const roomsLoading = view === 'buyer'
+    ? buyerRooms === null
+    : sellerRooms === null || sellerLeadsQuery.isPending;
   const error = view === 'buyer' ? buyerError : sellerError;
   const rooms = view === 'buyer' ? buyerRooms || [] : sellerRooms || [];
   const unreadCount = getUnreadChatCount(rooms, user.id);
@@ -149,6 +147,17 @@ export default function Chats() {
     setActiveChatKey(null);
     setSearchParams(nextView === 'buyer' ? {} : { view: nextView }, { replace: true });
   };
+
+  if (!chatAvailable) {
+    return (
+      <div className="container">
+        <h1 className="page-title">Chats</h1>
+        <div className="alert info" role="status">
+          {firebaseError || 'Chat is unavailable because Firebase is not configured for this deployment.'}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container">
@@ -163,12 +172,16 @@ export default function Chats() {
         </button>
       </div>
       {error && <div className="alert error">{error}</div>}
-      {roomsLoading ? <Spinner /> : items.length === 0 ? (
-        <p className="muted">
-          {view === 'buyer'
-            ? <>No buyer conversations yet. <Link to="/browse">Browse properties</Link> to contact a seller.</>
-            : 'No seller conversations yet. Conversations appear here when buyers contact you about a listing.'}
-        </p>
+      {view === 'seller' && sellerLeadsQuery.error && <div className="alert error">{sellerLeadsQuery.error.message}</div>}
+      {roomsLoading ? <Spinner /> : view === 'seller' && sellerLeadsQuery.error && !sellerLeadsQuery.data ? null : items.length === 0 ? (
+        <Empty
+          title={view === 'buyer' ? 'No buyer conversations yet' : 'No seller conversations yet'}
+          description={view === 'buyer'
+            ? 'Contact a seller from a property listing to start a conversation.'
+            : 'Conversations will appear here when buyers contact you about a listing.'}
+        >
+          {view === 'buyer' && <Link className="btn" to="/browse">Browse properties</Link>}
+        </Empty>
       ) : (
         <div className="table-wrap card p-0 chat-table-desktop">
           <table>
