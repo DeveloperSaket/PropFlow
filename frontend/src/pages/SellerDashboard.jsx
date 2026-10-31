@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
-import { Badge, Stat, formatMoney } from '../components/ui.jsx';
+import { appointmentQueries, interestQueries, propertyQueries, queryKeys } from '../api/queries.js';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert, Badge, Stat, formatMoney } from '../components/ui.jsx';
 import Spinner from '../lib/Spinner/index.jsx';
 import { Select } from '../lib/Form/index.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -13,23 +15,27 @@ export default function SellerDashboard() {
   const nav = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState(() => searchParams.get('tab') || 'listings');
-  const [listings, setListings] = useState(null);
-  const [leads, setLeads] = useState(null);
-  const [appts, setAppts] = useState(null);
+  const queryClient = useQueryClient();
+  const { data: listings, isPending: listingsPending, error: listingsError } = useQuery({
+    queryKey: queryKeys.properties.mine(user.id),
+    queryFn: propertyQueries.mine,
+  });
+  const { data: leads, isPending: leadsPending, error: leadsError } = useQuery({
+    queryKey: queryKeys.interests.received(user.id),
+    queryFn: interestQueries.received,
+  });
+  const { data: appts, isPending: appointmentsPending, error: appointmentsError } = useQuery({
+    queryKey: queryKeys.appointments.mine(user.id, 'seller'),
+    queryFn: ({ signal }) => appointmentQueries.mine('seller', { signal }),
+  });
   const [openChatLead, setOpenChatLead] = useState(null);
   const [chatRooms, setChatRooms] = useState(null);
   const [chatRoomsError, setChatRoomsError] = useState('');
   const [activeChatRoomId, setActiveChatRoomId] = useState(null);
-  const load = () => {
-    api.get('/properties?mine=1&limit=50').then((r) => setListings(r.data));
-    api.get('/interests/received').then((r) => setLeads(r.data));
-    api.get('/appointments/mine?view=seller').then((r) => setAppts(r.data));
-  };
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
     setTab(['listings', 'leads', 'viewings', 'chats'].includes(requestedTab) ? requestedTab : 'listings');
   }, [searchParams]);
-  useEffect(load, []);
   useEffect(() => {
     if (!chatAvailable || !db) {
       setChatRooms([]);
@@ -54,14 +60,24 @@ export default function SellerDashboard() {
       setChatRooms([]);
     }
   }, [user.id, chatAvailable, firebaseError]);
-  const del = async (id) => {
+  const dashboardMutation = useMutation({
+    mutationFn: ({ method, path, body }) => method === 'delete' ? api.del(path) : api.patch(path, body),
+    onSuccess: (_data, variables) => {
+      const keys = variables.kind === 'listing'
+        ? [queryKeys.properties.all, queryKeys.admin.stats]
+        : variables.kind === 'interest'
+          ? [queryKeys.interests.all, queryKeys.properties.all, queryKeys.admin.stats]
+          : [queryKeys.appointments.all, queryKeys.admin.stats, queryKeys.admin.appointments];
+      return Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+    },
+  });
+  const del = (id) => {
     if (!confirm('Delete this listing?')) return;
-    await api.del(`/properties/${id}`);
-    load();
+    dashboardMutation.mutate({ method: 'delete', path: `/properties/${id}`, kind: 'listing' });
   };
-  const markSold = async (id) => { await api.patch(`/properties/${id}/sold`); load(); };
-  const setLead = async (id, status) => { await api.patch(`/interests/${id}/status`, { status }); load(); };
-  const setAppt = async (id, status) => { await api.patch(`/appointments/${id}/status`, { status }); load(); };
+  const markSold = (id) => dashboardMutation.mutate({ method: 'patch', path: `/properties/${id}/sold`, kind: 'listing' });
+  const setLead = (id, status) => dashboardMutation.mutate({ method: 'patch', path: `/interests/${id}/status`, body: { status }, kind: 'interest' });
+  const setAppt = (id, status) => dashboardMutation.mutate({ method: 'patch', path: `/appointments/${id}/status`, body: { status }, kind: 'appointment' });
   const selectTab = (nextTab) => {
     setTab(nextTab);
     const nextParams = new URLSearchParams(searchParams);
@@ -69,7 +85,10 @@ export default function SellerDashboard() {
     else nextParams.set('tab', nextTab);
     setSearchParams(nextParams, { replace: true });
   };
-  if (!listings || !leads || !appts) return <Spinner />;
+  if (listingsPending || leadsPending || appointmentsPending) return <Spinner />;
+  if ((listingsError && !listings) || (leadsError && !leads) || (appointmentsError && !appts)) {
+    return <div className="container"><Alert type="error">{listingsError?.message || leadsError?.message || appointmentsError?.message}</Alert></div>;
+  }
   const approved = listings.filter((l) => l.status === 'approved').length;
   const pending = listings.filter((l) => l.status === 'pending').length;
   const totalViews = listings.reduce((s, l) => s + (l.views || 0), 0);
@@ -111,6 +130,10 @@ export default function SellerDashboard() {
           <h1 className="page-title">Seller Dashboard</h1>
           <p className="subtle">Manage your listings and buyer leads.</p>
         </div>
+        {dashboardMutation.error && <Alert type="error">{dashboardMutation.error.message}</Alert>}
+        {(listingsError || leadsError || appointmentsError) && (
+          <Alert type="error">{listingsError?.message || leadsError?.message || appointmentsError?.message}</Alert>
+        )}
         <button className="btn" onClick={() => nav('/seller/new')}>+ New listing</button>
       </div>
       {user.kyc_status !== 'verified' && (

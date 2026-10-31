@@ -1,35 +1,56 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
-import { Badge, Stat, formatMoney } from '../components/ui.jsx';
+import { adminQueries, queryKeys } from '../api/queries.js';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert, Badge, Stat, formatMoney } from '../components/ui.jsx';
 import Spinner from '../lib/Spinner/index.jsx';
 import { Input } from '../lib/Form/index.jsx';
 export default function AdminDashboard() {
   const [tab, setTab] = useState('overview');
-  const [stats, setStats] = useState(null);
-  const [pending, setPending] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [audit, setAudit] = useState([]);
-  const [appts, setAppts] = useState([]);
+  const queryClient = useQueryClient();
+  const statsQuery = useQuery({ queryKey: queryKeys.admin.stats, queryFn: adminQueries.stats });
+  const pendingQuery = useQuery({ queryKey: queryKeys.admin.pendingListings, queryFn: adminQueries.pendingListings });
+  const usersQuery = useQuery({ queryKey: queryKeys.admin.users, queryFn: adminQueries.users });
+  const auditQuery = useQuery({ queryKey: queryKeys.admin.audit, queryFn: adminQueries.audit });
+  const appointmentsQuery = useQuery({ queryKey: queryKeys.admin.appointments, queryFn: adminQueries.appointments });
+  const stats = statsQuery.data;
+  const pending = pendingQuery.data || [];
+  const users = usersQuery.data || [];
+  const audit = auditQuery.data || [];
+  const appts = appointmentsQuery.data || [];
   const [reason, setReason] = useState({});
-  const load = () => {
-    api.get('/admin/stats').then(setStats);
-    api.get('/admin/listings/pending').then((r) => setPending(r.data));
-    api.get('/admin/users').then((r) => setUsers(r.data));
-    api.get('/admin/audit?limit=60').then((r) => setAudit(r.data));
-    api.get('/admin/appointments').then((r) => setAppts(r.data));
-  };
-  useEffect(load, []);
-  const review = async (id, decision) => {
-    try {
-      await api.patch(`/admin/listings/${id}/review`, { decision, reason: reason[id] });
-      load();
-    } catch (e) { alert(e.message); }
-  };
-  const reviewKyc = async (id, status) => { await api.patch(`/admin/users/${id}/kyc`, { status }); load(); };
-  const toggleActive = async (u) => { await api.patch(`/admin/users/${u.id}/active`, { active: !u.active }); load(); };
-  const toggleAgent = async (u) => { await api.patch(`/admin/users/${u.id}/agent`, { is_agent: !u.is_agent }); load(); };
-  if (!stats) return <Spinner />;
+  const adminMutation = useMutation({
+    mutationFn: ({ path, body }) => api.patch(path, body),
+    onSuccess: (_data, variables) => {
+      const keys = variables.area === 'listing'
+        ? [queryKeys.admin.pendingListings, queryKeys.admin.stats, queryKeys.admin.audit, queryKeys.properties.all]
+        : variables.area === 'user'
+          ? [queryKeys.admin.users, queryKeys.admin.stats, queryKeys.admin.audit]
+          : [queryKeys.admin.appointments, queryKeys.admin.stats];
+      return Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+    },
+  });
+  const review = (id, decision) => adminMutation.mutate({
+    path: `/admin/listings/${id}/review`,
+    body: { decision, reason: reason[id] },
+    area: 'listing',
+  });
+  const reviewKyc = (id, status) => adminMutation.mutate({
+    path: `/admin/users/${id}/kyc`, body: { status }, area: 'user',
+  });
+  const toggleActive = (u) => adminMutation.mutate({
+    path: `/admin/users/${u.id}/active`, body: { active: !u.active }, area: 'user',
+  });
+  const toggleAgent = (u) => adminMutation.mutate({
+    path: `/admin/users/${u.id}/agent`, body: { is_agent: !u.is_agent }, area: 'user',
+  });
+  const queryError = [statsQuery, pendingQuery, usersQuery, auditQuery, appointmentsQuery]
+    .find((query) => query.error)?.error;
+  if ([statsQuery, pendingQuery, usersQuery, auditQuery, appointmentsQuery].some((query) => query.isPending)) return <Spinner />;
+  if (queryError && [stats, pendingQuery.data, usersQuery.data, auditQuery.data, appointmentsQuery.data].some((data) => data === undefined)) {
+    return <div className="container"><Alert type="error">{queryError.message}</Alert></div>;
+  }
   const tabs = [
     ['overview', 'Overview'],
     ['listings', `Review Queue (${pending.length})`],
@@ -41,6 +62,8 @@ export default function AdminDashboard() {
     <div className="container">
       <h1 className="page-title">Platform Admin</h1>
       <p className="subtle">Oversight of users, listings, activity and compliance.</p>
+      {adminMutation.error && <Alert type="error">{adminMutation.error.message}</Alert>}
+      {queryError && <Alert type="error">{queryError.message}</Alert>}
       <div className="tabs">
         {tabs.map(([k, label]) => (
           <div key={k} className={`tab ${tab === k ? 'active' : ''}`} onClick={() => setTab(k)}>{label}</div>

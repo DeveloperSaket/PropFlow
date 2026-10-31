@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client.js';
+import { propertyQueries, queryKeys } from '../api/queries.js';
 import { Badge, Alert, formatMoney } from '../components/ui.jsx';
 import Spinner from '../lib/Spinner/index.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -12,34 +14,51 @@ export default function PropertyDetail() {
   const { id } = useParams();
   const { user, chatAvailable, firebaseError } = useAuth();
   const nav = useNavigate();
-  const [p, setP] = useState(null);
   const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
   const [when, setWhen] = useState('');
-  const load = () => api.get(`/properties/${id}`).then((r) => setP(r.data)).catch((e) => setErr(e.message));
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
-  if (err) return <div className="container"><Alert type="error">{err}</Alert></div>;
-  if (!p) return <Spinner />;
-  const expressInterest = async () => {
-    setErr(''); setOk('');
-    try {
-      await api.post('/interests', { property_id: p.id, message: msg });
+  const queryClient = useQueryClient();
+  const { data: p, isPending, error } = useQuery({
+    queryKey: queryKeys.properties.detail(id),
+    queryFn: ({ signal }) => propertyQueries.detail(id, { signal }),
+  });
+  const interestMutation = useMutation({
+    mutationFn: (payload) => api.post('/interests', payload),
+    onSuccess: () => {
       setOk('Interest recorded! The seller can now contact you. Track it in your dashboard.');
-      load();
-    } catch (e) { setErr(e.message); }
-  };
-  const bookViewing = async () => {
-    setErr(''); setOk('');
-    try {
-      await api.post('/appointments', { property_id: p.id, scheduled_at: new Date(when).toISOString() });
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.interests.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.properties.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats }),
+      ]);
+    },
+  });
+  const appointmentMutation = useMutation({
+    mutationFn: (payload) => api.post('/appointments', payload),
+    onSuccess: () => {
       setOk('Viewing requested! Check your dashboard for status updates.');
-    } catch (e) { setErr(e.message); }
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.appointments }),
+      ]);
+    },
+  });
+  if (isPending) return <Spinner />;
+  if (error && !p) return <div className="container"><Alert type="error">{error.message}</Alert></div>;
+  const expressInterest = () => {
+    setOk('');
+    interestMutation.mutate({ property_id: p.id, message: msg });
+  };
+  const bookViewing = () => {
+    setOk('');
+    appointmentMutation.mutate({ property_id: p.id, scheduled_at: new Date(when).toISOString() });
   };
   const img = p.images?.[0];
   return (
     <div className="container">
       <Link to="/browse">← Back to results</Link>
+      {error && <Alert type="error">{error.message}</Alert>}
       <div className="grid cols-2 mt-14-align-start">
         <div>
           {img ? <img src={img} alt={p.title} className="image-rounded-cover" /> : <div className="property-image-placeholder">No image available</div>}
@@ -73,7 +92,7 @@ export default function PropertyDetail() {
           </div>
         </div>
       </div>
-      <Alert type="error">{err}</Alert>
+      <Alert type="error">{interestMutation.error?.message || appointmentMutation.error?.message}</Alert>
       <Alert type="success">{ok}</Alert>
       {/* Buyer actions */}
       {p.status === 'approved' && (!user || user.role === 'member') && user?.id !== p.seller_id && (
@@ -87,7 +106,9 @@ export default function PropertyDetail() {
             ) : (
               <>
                 <Textarea label="Message to seller (optional)" rows={3} value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="I'd like more details / a site visit…" />
-                <button className="btn" onClick={expressInterest}>Express interest</button>
+                <button className="btn" onClick={expressInterest} disabled={interestMutation.isPending}>
+                  {interestMutation.isPending ? 'Submitting…' : 'Express interest'}
+                </button>
               </>
             )}
           </div>
@@ -96,7 +117,9 @@ export default function PropertyDetail() {
             {user && user.role !== 'admin' ? (
               <>
                 <Input label="Preferred date & time" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
-                <button className="btn green" disabled={!when} onClick={bookViewing}>Request viewing</button>
+                <button className="btn green" disabled={!when || appointmentMutation.isPending} onClick={bookViewing}>
+                  {appointmentMutation.isPending ? 'Requesting…' : 'Request viewing'}
+                </button>
               </>
             ) : (
               <p className="muted">Log in to schedule a property viewing.</p>

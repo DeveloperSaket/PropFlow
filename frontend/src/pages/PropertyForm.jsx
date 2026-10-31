@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { propertyQueries, queryKeys } from '../api/queries.js';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert } from '../components/ui.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import Spinner from '../lib/Spinner/index.jsx';
 import { getPropertyTypeLabel, PROPERTY_TYPES } from '../constants/propertyTypes.js';
 import Form, { FileInput, Input, Select, Textarea } from '../lib/Form/index.jsx';
 const blank = {
@@ -15,26 +18,40 @@ export default function PropertyForm() {
   const editing = Boolean(id);
   const { user } = useAuth();
   const nav = useNavigate();
+  const queryClient = useQueryClient();
+  const propertyQuery = useQuery({
+    queryKey: queryKeys.properties.detail(id),
+    queryFn: ({ signal }) => propertyQueries.detail(id, { signal }),
+    enabled: editing,
+  });
   const [form, setForm] = useState(blank);
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [err, setErr] = useState('');
-  const [busy, setBusy] = useState(false);
+  const initializedPropertyId = useRef(null);
   useEffect(() => {
-    if (editing) {
-      api.get(`/properties/${id}`).then((r) => {
-        const p = r.data;
-        setForm({
-          title: p.title || '', description: p.description || '',
-          property_type: p.property_type, listing_type: p.listing_type,
-          price: p.price ?? '', area_sqft: p.area_sqft ?? '',
-          bedrooms: p.bedrooms ?? '', bathrooms: p.bathrooms ?? '',
-          address: p.address || '', city: p.city || '', state: p.state || '',
-          pincode: p.pincode || '', images: (p.images || []).join(', '),
-        });
-      }).catch((e) => setErr(e.message));
-    }
-  }, [id, editing]);
+    if (!propertyQuery.data || initializedPropertyId.current === id) return;
+    const p = propertyQuery.data;
+    setForm({
+      title: p.title || '', description: p.description || '',
+      property_type: p.property_type, listing_type: p.listing_type,
+      price: p.price ?? '', area_sqft: p.area_sqft ?? '',
+      bedrooms: p.bedrooms ?? '', bathrooms: p.bathrooms ?? '',
+      address: p.address || '', city: p.city || '', state: p.state || '',
+      pincode: p.pincode || '', images: (p.images || []).join(', '),
+    });
+    initializedPropertyId.current = id;
+  }, [id, propertyQuery.data]);
+  const submitMutation = useMutation({
+    mutationFn: ({ formData }) => api.upload(`/properties${editing ? `/${id}` : ''}`, formData, editing ? 'PUT' : 'POST'),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.properties.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.properties.mine(user.id) }),
+      ]);
+      nav('/seller');
+    },
+  });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   useEffect(() => {
     const urls = imageFiles.map((file) => URL.createObjectURL(file));
@@ -63,8 +80,8 @@ export default function PropertyForm() {
     setErr('');
     setImageFiles(files);
   };
-  const submit = async (draft) => {
-    setErr(''); setBusy(true);
+  const submit = (draft) => {
+    setErr('');
     const payload = {
       ...form,
       price: Number(form.price),
@@ -74,16 +91,17 @@ export default function PropertyForm() {
       images: form.images.split(',').map((s) => s.trim()).filter(Boolean),
       saveDraft: draft,
     };
-    try {
-      const formData = new FormData();
-      Object.entries(payload).forEach(([key, value]) => {
-        formData.append(key, key === 'images' ? JSON.stringify(value) : value == null ? '' : String(value));
-      });
-      imageFiles.forEach((file) => formData.append('propertyImages', file));
-      await api.upload(`/properties${editing ? `/${id}` : ''}`, formData, editing ? 'PUT' : 'POST');
-      nav('/seller');
-    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+    const formData = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      formData.append(key, key === 'images' ? JSON.stringify(value) : value == null ? '' : String(value));
+    });
+    imageFiles.forEach((file) => formData.append('propertyImages', file));
+    submitMutation.mutate({ formData });
   };
+  if (editing && propertyQuery.isPending) return <Spinner />;
+  if (editing && propertyQuery.error && !propertyQuery.data) {
+    return <div className="container"><Alert type="error">{propertyQuery.error.message}</Alert></div>;
+  }
   return (
     <div className="container max-width-760">
       <h1 className="page-title">{editing ? 'Edit listing' : 'New listing'}</h1>
@@ -93,7 +111,7 @@ export default function PropertyForm() {
       {user.kyc_status !== 'verified' && (
         <Alert type="info">Note: your KYC must be verified for listings to publish.</Alert>
       )}
-      <Alert type="error">{err}</Alert>
+      <Alert type="error">{err || propertyQuery.error?.message || submitMutation.error?.message}</Alert>
       <Form className="card" onSubmit={(e) => { e.preventDefault(); submit(false); }}>
         <Input label="Title" value={form.title} onChange={set('title')} required placeholder="e.g. 3-bedroom Condo with Lake View" />
         <Textarea label="Description" rows={4} value={form.description} onChange={set('description')} />
@@ -144,8 +162,8 @@ export default function PropertyForm() {
           </div>
         )}
         <div className="flex">
-          <button className="btn" disabled={busy}>{editing ? 'Save & submit for review' : 'Submit for review'}</button>
-          {!editing && <button type="button" className="btn secondary" disabled={busy} onClick={() => submit(true)}>Save as draft</button>}
+          <button className="btn" disabled={submitMutation.isPending}>{editing ? 'Save & submit for review' : 'Submit for review'}</button>
+          {!editing && <button type="button" className="btn secondary" disabled={submitMutation.isPending} onClick={() => submit(true)}>Save as draft</button>}
           <button type="button" className="btn secondary" onClick={() => nav('/seller')}>Cancel</button>
         </div>
       </Form>
