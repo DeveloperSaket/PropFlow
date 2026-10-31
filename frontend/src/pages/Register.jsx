@@ -33,7 +33,7 @@ export default function Register() {
         <Input label="Password" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} required minLength={8} hint="At least 8 characters." />
         <Checkbox
           id="terms"
-          label={<>I accept the Terms of Service &amp; Compliance policy (KYC may be required).</>}
+          label={<>I agree to the <a href="/static/compliance/account-terms-and-condition" target="_blank" rel="noopener noreferrer">Account Terms and Conditions</a> (KYC may be required).</>}
           checked={form.acceptTerms}
           onChange={set('acceptTerms')}
           required

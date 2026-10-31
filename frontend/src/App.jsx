@@ -13,6 +13,7 @@ import Chats from './pages/Chats.jsx';
 import PropertyForm from './pages/PropertyForm.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import Kyc from './pages/Kyc.jsx';
+import AccountTerms from './pages/AccountTerms.jsx';
 function Protected({ children, roles }) {
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/properties/:id" element={<PropertyDetail />} />
         <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
         <Route path="/register" element={<GuestOnly><Register /></GuestOnly>} />
+        <Route path="/static/compliance/account-terms-and-condition" element={<AccountTerms />} />
         <Route path="/kyc" element={<Protected roles={['member']}><Kyc /></Protected>} />
         <Route path="/buyer" element={<Protected roles={['member']}><BuyerDashboard /></Protected>} />
         <Route path="/seller" element={<Protected roles={['member']}><SellerDashboard /></Protected>} />
