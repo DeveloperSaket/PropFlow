@@ -29,7 +29,6 @@ export function AuthProvider({ children }) {
   const refresh = useCallback(async () => {
     if (!getToken()) {
       setUser(null);
-      queryClient.clear();
       if (auth) await signOut(auth).catch(() => {});
       setLoading(false);
       return;
@@ -41,7 +40,11 @@ export function AuthProvider({ children }) {
     } catch {
       setToken(null);
       setUser(null);
-      queryClient.clear();
+      queryClient.removeQueries({
+        predicate: (query) => (
+          query.queryKey[0] !== 'properties' || query.queryKey[1] !== 'list'
+        ),
+      });
       if (auth) await signOut(auth).catch(() => {});
     } finally {
       setLoading(false);
