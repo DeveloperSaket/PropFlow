@@ -23,6 +23,8 @@ export const queryKeys = {
     users: ['admin', 'users'],
     audit: ['admin', 'audit'],
     appointments: ['admin', 'appointments'],
+    staffRoles: ['admin', 'staff-roles'],
+    roleRequests: ['admin', 'role-requests'],
   },
   kyc: (userId) => ['kyc', String(userId)],
 };
@@ -73,6 +75,14 @@ export const adminQueries = {
   },
   appointments: async ({ signal } = {}) => {
     const response = await api.get('/admin/appointments', { signal });
+    return response.data;
+  },
+  staffRoles: async ({ signal } = {}) => {
+    const response = await api.get('/admin/staff/roles', { signal });
+    return response.data;
+  },
+  roleRequests: async ({ signal } = {}) => {
+    const response = await api.get('/admin/staff/role-requests', { signal });
     return response.data;
   },
 };

@@ -12,14 +12,17 @@ import BuyerDashboard from './pages/BuyerDashboard.jsx';
 import SellerDashboard from './pages/SellerDashboard.jsx';
 import Chats from './pages/Chats.jsx';
 import PropertyForm from './pages/PropertyForm.jsx';
-import AdminDashboard from './pages/AdminDashboard.jsx';
+import StaffDashboard from './pages/StaffDashboard.jsx';
+import StaffRoleRequest from './pages/StaffRoleRequest.jsx';
 import Kyc from './pages/Kyc.jsx';
+import Profile from './pages/profile/Profile.jsx';
 const AccountTerms = lazy(() => import('./pages/AccountTerms.jsx'));
-function Protected({ children, roles }) {
+function Protected({ children, roles, staffOnly = false }) {
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
+  if (staffOnly && !user.staff_roles?.length) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -40,6 +43,8 @@ export default function App() {
         <Route path="/properties/:id" element={<PropertyDetail />} />
         <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
         <Route path="/register" element={<GuestOnly><Register /></GuestOnly>} />
+        <Route path="/profile" element={<Protected><Profile /></Protected>} />
+        <Route path="/staff/request-access" element={<Protected><StaffRoleRequest /></Protected>} />
         <Route
           path="/static/compliance/account-terms-and-condition"
           element={
@@ -54,7 +59,7 @@ export default function App() {
         <Route path="/chats" element={<Protected roles={['member']}><Chats /></Protected>} />
         <Route path="/seller/new" element={<Protected roles={['member']}><PropertyForm /></Protected>} />
         <Route path="/seller/edit/:id" element={<Protected roles={['member']}><PropertyForm /></Protected>} />
-        <Route path="/admin" element={<Protected roles={['admin']}><AdminDashboard /></Protected>} />
+        <Route path="/admin" element={<Protected staffOnly><StaffDashboard /></Protected>} />
         <Route path="*" element={<div className="container"><h2>404 — Page not found</h2><Link to="/">Go home</Link></div>} />
       </Routes>
     </>

@@ -16,7 +16,7 @@ export default function Login() {
     setErr(''); setBusy(true);
     try {
       const u = await login(email, password);
-      nav(dest[u.role] || '/');
+      nav(u.staff_roles?.length ? '/admin' : (dest[u.role] || '/'));
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   const quick = (em) => { setEmail(em); setPassword(em.includes('admin') ? 'Admin@12345' : 'Password@123'); };

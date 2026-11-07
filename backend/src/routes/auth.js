@@ -4,12 +4,12 @@ import {
   hashPassword,
   verifyPassword,
   signToken,
-  publicUser,
 } from '../utils/auth.js';
 import { required, isEmail, HttpError } from '../utils/validate.js';
 import { authenticate } from '../middleware/auth.js';
 import { audit } from '../utils/audit.js';
 import { createFirebaseCustomToken } from '../utils/firebase.js';
+import { userWithStaffAccess } from '../utils/staff.js';
 const router = Router();
 const findByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
 const insertUser = db.prepare(
@@ -47,7 +47,7 @@ router.post('/register', (req, res) => {
     ip: req.ip,
   });
   const token = signToken(user);
-  res.status(201).json({ token, user: publicUser(user) });
+  res.status(201).json({ token, user: userWithStaffAccess(user) });
 });
 // POST /api/auth/login
 router.post('/login', (req, res) => {
@@ -66,12 +66,48 @@ router.post('/login', (req, res) => {
     ip: req.ip,
   });
   const token = signToken(user);
-  res.json({ token, user: publicUser(user) });
+  res.json({ token, user: userWithStaffAccess(user) });
 });
 // GET /api/auth/me
 router.get('/me', authenticate, (req, res) => {
   const user = getById.get(req.user.id);
-  res.json({ user: publicUser(user) });
+  res.json({ user: userWithStaffAccess(user) });
+});
+// POST /api/auth/change-password
+router.post('/change-password', authenticate, (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+    throw new HttpError(400, 'Current password and new password are required');
+  }
+  if (newPassword.length < 8) {
+    throw new HttpError(400, 'New password must be at least 8 characters');
+  }
+
+  const user = getById.get(req.user.id);
+  if (!verifyPassword(currentPassword, user.password_hash)) {
+    throw new HttpError(400, 'Current password is incorrect');
+  }
+  if (verifyPassword(newPassword, user.password_hash)) {
+    throw new HttpError(400, 'New password must be different from the current password');
+  }
+
+  db.prepare(`
+    UPDATE users
+    SET password_hash = ?, token_version = token_version + 1
+    WHERE id = ?
+  `).run(hashPassword(newPassword), user.id);
+  const updatedUser = getById.get(user.id);
+  audit({
+    actorId: user.id,
+    action: 'user.password_changed',
+    entity: 'user',
+    entityId: user.id,
+    ip: req.ip,
+  });
+  res.json({
+    token: signToken(updatedUser),
+    user: userWithStaffAccess(updatedUser),
+  });
 });
 // GET /api/auth/firebase-token — exchange the app JWT identity for Firebase Auth
 router.get('/firebase-token', authenticate, async (req, res, next) => {

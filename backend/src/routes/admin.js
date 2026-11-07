@@ -1,14 +1,13 @@
 import { Router } from 'express';
 import { db } from '../db.js';
-import { authenticate, requireRole } from '../middleware/auth.js';
+import { authenticate, requirePermission } from '../middleware/auth.js';
 import { oneOf, HttpError } from '../utils/validate.js';
 import { audit } from '../utils/audit.js';
-import { publicUser } from '../utils/auth.js';
+import { userWithStaffAccess } from '../utils/staff.js';
 const router = Router();
-// All admin routes require an authenticated admin
-router.use(authenticate, requireRole('admin'));
+router.use(authenticate);
 // GET /api/admin/stats — headline numbers for the owner dashboard
-router.get('/stats', (req, res) => {
+router.get('/stats', requirePermission('dashboard.read'), (req, res) => {
   const one = (sql, ...p) => db.prepare(sql).get(...p).c;
   const usersByRole = db
     .prepare('SELECT role, COUNT(*) AS c FROM users GROUP BY role')
@@ -45,7 +44,7 @@ router.get('/stats', (req, res) => {
   });
 });
 // GET /api/admin/users — list/manage users
-router.get('/users', (req, res) => {
+router.get('/users', requirePermission('users.read'), (req, res) => {
   const { role, kyc } = req.query;
   const where = [];
   const params = {};
@@ -61,10 +60,10 @@ router.get('/users', (req, res) => {
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const rows = db.prepare(`SELECT * FROM users ${whereSql} ORDER BY created_at DESC`).all(params);
-  res.json({ data: rows.map(publicUser) });
+  res.json({ data: rows.map(userWithStaffAccess) });
 });
 // PATCH /api/admin/users/:id/kyc — approve/reject KYC
-router.patch('/users/:id/kyc', (req, res) => {
+router.patch('/users/:id/kyc', requirePermission('kyc.review'), (req, res) => {
   const { status, note } = req.body;
   oneOf(status, ['verified', 'rejected', 'pending', 'unverified'], 'status');
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
@@ -83,14 +82,19 @@ router.patch('/users/:id/kyc', (req, res) => {
     meta: { status, note },
     ip: req.ip,
   });
-  res.json({ data: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(user.id)) });
+  res.json({ data: userWithStaffAccess(db.prepare('SELECT * FROM users WHERE id = ?').get(user.id)) });
 });
 // PATCH /api/admin/users/:id/active — activate/deactivate account
-router.patch('/users/:id/active', (req, res) => {
+router.patch('/users/:id/active', requirePermission('users.manage'), (req, res) => {
   const { active } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) throw new HttpError(404, 'User not found');
+  if (typeof active !== 'boolean') throw new HttpError(400, 'active must be a boolean');
   if (user.role === 'admin') throw new HttpError(400, 'Cannot deactivate an admin');
+  if (!active && db.prepare(`
+    SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+    WHERE ur.user_id = ? AND r.role_key = 'owner'
+  `).get(user.id)) throw new HttpError(400, 'Remove the owner role before deactivating this account');
   db.prepare('UPDATE users SET active = ? WHERE id = ?').run(active ? 1 : 0, user.id);
   audit({
     actorId: req.user.id,
@@ -100,10 +104,10 @@ router.patch('/users/:id/active', (req, res) => {
     meta: { active: !!active },
     ip: req.ip,
   });
-  res.json({ data: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(user.id)) });
+  res.json({ data: userWithStaffAccess(db.prepare('SELECT * FROM users WHERE id = ?').get(user.id)) });
 });
 // PATCH /api/admin/users/:id/agent — flag an identified agent account
-router.patch('/users/:id/agent', (req, res) => {
+router.patch('/users/:id/agent', requirePermission('users.agent'), (req, res) => {
   const { is_agent } = req.body;
   if (typeof is_agent !== 'boolean') throw new HttpError(400, 'is_agent must be a boolean');
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
@@ -121,7 +125,7 @@ router.patch('/users/:id/agent', (req, res) => {
   res.json({ data: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(user.id)) });
 });
 // GET /api/admin/listings/pending — compliance review queue
-router.get('/listings/pending', (req, res) => {
+router.get('/listings/pending', requirePermission('listings.read'), (req, res) => {
   const rows = db
     .prepare(
       `SELECT p.*, u.name AS seller_name, u.email AS seller_email, u.kyc_status AS seller_kyc
@@ -132,7 +136,7 @@ router.get('/listings/pending', (req, res) => {
   res.json({ data: rows });
 });
 // PATCH /api/admin/listings/:id/review — approve or reject a listing
-router.patch('/listings/:id/review', (req, res) => {
+router.patch('/listings/:id/review', requirePermission('listings.review'), (req, res) => {
   const { decision, reason } = req.body;
   oneOf(decision, ['approve', 'reject'], 'decision');
   const prop = db.prepare('SELECT * FROM properties WHERE id = ?').get(req.params.id);
@@ -154,7 +158,7 @@ router.patch('/listings/:id/review', (req, res) => {
   res.json({ data: db.prepare('SELECT * FROM properties WHERE id = ?').get(prop.id) });
 });
 // PATCH /api/admin/listings/:id/feature — toggle featured flag
-router.patch('/listings/:id/feature', (req, res) => {
+router.patch('/listings/:id/feature', requirePermission('listings.feature'), (req, res) => {
   const prop = db.prepare('SELECT * FROM properties WHERE id = ?').get(req.params.id);
   if (!prop) throw new HttpError(404, 'Property not found');
   const featured = prop.featured ? 0 : 1;
@@ -163,13 +167,16 @@ router.patch('/listings/:id/feature', (req, res) => {
   res.json({ data: db.prepare('SELECT * FROM properties WHERE id = ?').get(prop.id) });
 });
 // GET /api/admin/audit — compliance audit trail (paginated)
-router.get('/audit', (req, res) => {
+router.get('/audit', requirePermission('audit.read'), (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
   const total = db.prepare('SELECT COUNT(*) AS c FROM audit_logs').get().c;
   const rows = db
     .prepare(
-      `SELECT a.*, u.name AS actor_name, u.role AS actor_role
+      `SELECT a.*, u.name AS actor_name, u.role AS actor_role,
+         (SELECT GROUP_CONCAT(r.name, ', ')
+          FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+          WHERE ur.user_id = u.id) AS actor_staff_roles
        FROM audit_logs a LEFT JOIN users u ON u.id = a.actor_id
        ORDER BY a.created_at DESC, a.id DESC
        LIMIT ? OFFSET ?`
@@ -181,7 +188,7 @@ router.get('/audit', (req, res) => {
   });
 });
 // GET /api/admin/appointments — all appointments overview
-router.get('/appointments', (req, res) => {
+router.get('/appointments', requirePermission('appointments.read'), (req, res) => {
   const rows = db
     .prepare(
       `SELECT a.*, p.title, bu.name AS buyer_name, su.name AS seller_name
@@ -194,4 +201,137 @@ router.get('/appointments', (req, res) => {
     .all();
   res.json({ data: rows });
 });
+
+router.get('/staff/roles', requirePermission('staff.manage'), (_req, res) => {
+  const rows = db.prepare(`
+    SELECT r.role_key, r.name, r.description,
+      COALESCE(GROUP_CONCAT(p.permission_key), '') AS permissions
+    FROM roles r
+    LEFT JOIN role_permissions rp ON rp.role_id = r.id
+    LEFT JOIN permissions p ON p.id = rp.permission_id
+    GROUP BY r.id
+    ORDER BY r.role_key
+  `).all();
+  res.json({
+    data: rows.map((row) => ({
+      role_key: row.role_key,
+      name: row.name,
+      description: row.description,
+      permissions: row.permissions ? row.permissions.split(',') : [],
+    })),
+  });
+});
+
+router.patch('/users/:id/staff-roles', requirePermission('staff.manage'), (req, res) => {
+  const { role_key: roleKey, assigned } = req.body || {};
+  if (typeof assigned !== 'boolean') throw new HttpError(400, 'assigned must be a boolean');
+  if (typeof roleKey !== 'string' || !roleKey.trim()) throw new HttpError(400, 'role_key is required');
+  const normalizedRoleKey = roleKey.trim();
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  if (!user) throw new HttpError(404, 'User not found');
+  const role = db.prepare('SELECT id FROM roles WHERE role_key = ?').get(normalizedRoleKey);
+  if (!role) throw new HttpError(400, 'Unknown staff role');
+
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    if (assigned) {
+      if (!user.active) throw new HttpError(409, 'Cannot assign a staff role to an inactive account');
+      db.prepare('INSERT OR IGNORE INTO staff_profiles (user_id) VALUES (?)').run(user.id);
+      db.prepare(`
+        INSERT OR IGNORE INTO user_roles (user_id, role_id, granted_by)
+        VALUES (?, ?, ?)
+      `).run(user.id, role.id, req.user.id);
+    } else {
+      if (normalizedRoleKey === 'owner') {
+        const activeOwners = db.prepare(`
+          SELECT COUNT(*) AS count
+          FROM user_roles ur
+          JOIN roles r ON r.id = ur.role_id
+          JOIN users u ON u.id = ur.user_id
+          WHERE r.role_key = 'owner' AND u.active = 1
+        `).get().count;
+        if (activeOwners <= 1) throw new HttpError(409, 'At least one active owner must remain');
+      }
+      db.prepare('DELETE FROM user_roles WHERE user_id = ? AND role_id = ?').run(user.id, role.id);
+    }
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+
+  audit({
+    actorId: req.user.id,
+    action: assigned ? 'staff.role_assigned' : 'staff.role_revoked',
+    entity: 'user',
+    entityId: user.id,
+    meta: { role_key: normalizedRoleKey },
+    ip: req.ip,
+  });
+  res.json({ data: userWithStaffAccess(db.prepare('SELECT * FROM users WHERE id = ?').get(user.id)) });
+});
+
+router.get('/staff/role-requests', requirePermission('staff.requests.review'), (_req, res) => {
+  const rows = db.prepare(`
+    SELECT sr.*, u.name AS requester_name, u.email AS requester_email,
+      r.role_key, r.name AS role_name
+    FROM staff_role_requests sr
+    JOIN users u ON u.id = sr.user_id
+    JOIN roles r ON r.id = sr.role_id
+    WHERE sr.status = 'pending'
+    ORDER BY sr.created_at ASC, sr.id ASC
+  `).all();
+  res.json({ data: rows });
+});
+
+router.patch('/staff/role-requests/:id', requirePermission('staff.requests.review'), (req, res) => {
+  const { decision, review_note: reviewNote } = req.body || {};
+  oneOf(decision, ['approve', 'reject'], 'decision');
+  if (reviewNote !== undefined && (typeof reviewNote !== 'string' || reviewNote.length > 2000)) {
+    throw new HttpError(400, 'review_note must be a string of at most 2000 characters');
+  }
+  const requestId = Number(req.params.id);
+  if (!Number.isInteger(requestId) || requestId < 1) throw new HttpError(400, 'Invalid request id');
+
+  let request;
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    request = db.prepare(`
+      SELECT sr.*, r.role_key
+      FROM staff_role_requests sr
+      JOIN roles r ON r.id = sr.role_id
+      WHERE sr.id = ? AND sr.status = 'pending'
+    `).get(requestId);
+    if (!request) throw new HttpError(404, 'Pending role request not found');
+    if (decision === 'approve') {
+      const requester = db.prepare('SELECT active FROM users WHERE id = ?').get(request.user_id);
+      if (!requester?.active) throw new HttpError(409, 'Cannot approve a request for an inactive account');
+      db.prepare('INSERT OR IGNORE INTO staff_profiles (user_id) VALUES (?)').run(request.user_id);
+      db.prepare(`
+        INSERT OR IGNORE INTO user_roles (user_id, role_id, granted_by)
+        VALUES (?, ?, ?)
+      `).run(request.user_id, request.role_id, req.user.id);
+    }
+    db.prepare(`
+      UPDATE staff_role_requests
+      SET status = ?, reviewed_by = ?, reviewed_at = datetime('now'), review_note = ?
+      WHERE id = ? AND status = 'pending'
+    `).run(decision === 'approve' ? 'approved' : 'rejected', req.user.id, reviewNote?.trim() || null, requestId);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+
+  audit({
+    actorId: req.user.id,
+    action: `staff.role_request_${decision}`,
+    entity: 'staff_role_request',
+    entityId: requestId,
+    meta: { user_id: request.user_id, role_key: request.role_key },
+    ip: req.ip,
+  });
+  res.json({ data: { id: requestId, status: decision === 'approve' ? 'approved' : 'rejected' } });
+});
+
 export default router;

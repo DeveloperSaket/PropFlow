@@ -1,17 +1,34 @@
 # PropFlow — Compliant Property Marketplace
 A full-stack platform connecting **property sellers** and **buyers**, with a
-**platform-owner (admin)** back office and built-in **compliance** (KYC
+**staff** back office and built-in **compliance** (KYC
 verification, listing approval, and an immutable audit trail).
 - **Frontend:** React 18 + Vite + React Router
 - **Backend:** Node.js + Express
 - **Database:** SQLite (via Node's built-in `node:sqlite` — zero native build)
-- **Auth:** JWT (stateless), bcrypt password hashing, role-based access control
+- **Auth:** JWT sessions, bcrypt password hashing, role/permission-based access control
 ---
 ## 1. Roles & capabilities
 | Role | Can do |
 |------|--------|
 | **Member** | Every regular account can browse/filter approved listings, express interest, request viewings, create/manage its own listings (KYC-gated), manage leads, and submit KYC. |
-| **Admin (platform owner)** | Dashboard metrics, approve/reject listings, verify/reject KYC, activate/deactivate users, view all appointments, read the audit log |
+| **Owner / Super Admin** | Assign/revoke staff roles and approve role requests; access all staff administration |
+| **Listing Moderator** | View the moderation queue; approve/reject and feature listings |
+| **Compliance Reviewer** | View users and review KYC submissions |
+| **Support Agent** | View users and appointments |
+| **Read-only Analyst** | View dashboard metrics and audit records |
+
+Staff permissions are backed by `staff_profiles`, `roles`, `permissions`,
+`role_permissions`, and `user_roles`. The existing `users` identity remains
+shared; a staff role does not create another login. Existing admin accounts
+are migrated to Owner on startup. The Owner can assign predefined roles from
+the staff dashboard. Logged-in users with an address ending in
+`@negobrick.com` can open `/staff/request-access` and submit a role request
+with a justification; an Owner must approve it before access is granted.
+
+The current app checks the email's domain string but does **not** verify
+control of that mailbox. Do not treat the domain check as proof of identity.
+Add email verification or company SSO before relying on domain eligibility as
+an identity guarantee.
 ## 2. Compliance features
 1. **KYC verification** — members upload ID documents; admin reviews. Members **cannot publish** a listing until `kyc_status = verified` (`requireKyc` middleware).
 2. **Listing moderation** — every new/edited listing enters a `pending` queue and must be **approved** by an admin before it is publicly visible.
@@ -55,7 +72,9 @@ ADMIN_PASSWORD=Admin@12345
 An admin account is auto-created on first boot if none exists.
 
 ### Agent classification
-Regular accounts are stored as `member` and can both buy and list properties. Admin is a separate account type. Agent status is a separate flag that admins can apply to an identified member from the Users table.
+Regular accounts are stored as `member` and can both buy and list properties.
+Agent status is separate from staff access. Staff users can also be members;
+staff capabilities come from assigned permissions, not the legacy account role.
 
 ### Firebase chat setup
 1. In Firebase Console, enable **Authentication** and create the **Cloud Firestore** database.
@@ -85,8 +104,8 @@ propflow/
 │   │   ├── bootstrap.js       # auto-create admin
 │   │   ├── seed.js            # demo data
 │   │   ├── middleware/        # auth (authenticate/requireRole/requireKyc), error handler
-│   │   ├── routes/            # auth, properties, interests, appointments, compliance, admin
-│   │   └── utils/             # auth (jwt/bcrypt), audit, validation
+│   │   ├── routes/            # auth, properties, interests, appointments, compliance, admin, staff
+│   │   └── utils/             # auth (jwt/bcrypt), staff access, audit, validation
 │   ├── data/                  # sqlite db file (gitignored)
 │   └── uploads/               # KYC documents (gitignored)
 └── frontend/
@@ -95,7 +114,7 @@ propflow/
         ├── context/AuthContext.jsx
         ├── components/        # PropertyCard, UI helpers
         └── pages/             # Home, Browse, PropertyDetail, Login, Register,
-                               # Kyc, Buyer/Seller/Admin dashboards, PropertyForm
+                               # Profile, Kyc, Buyer/Seller/Staff dashboards, PropertyForm
 ```
 ---
 ## 6. API reference (prefix `/api`)
@@ -105,7 +124,15 @@ propflow/
 | POST | `/auth/register` | — | Register buyer/seller (requires `acceptTerms`) |
 | POST | `/auth/login` | — | Login, returns JWT |
 | GET | `/auth/me` | token | Current user |
+| POST | `/auth/change-password` | token + current password | Change password, rotate session version, and return a replacement JWT |
 | GET | `/auth/firebase-token` | token | Mint a Firebase custom token for the current user |
+| GET | `/staff/roles` | token | List requestable roles, assigned roles, and the user's request history |
+| POST | `/staff/role-requests` | token + `@negobrick.com` email | Submit a role request with justification |
+
+Signed-in users can view their account details and change their password at
+`/profile`. Password changes require the current password and invalidate
+previous sessions. Email-based recovery for forgotten passwords is not
+available until an email delivery and verification flow is configured.
 ### Properties
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -145,6 +172,10 @@ propflow/
 | PATCH | `/admin/listings/:id/feature` | Toggle featured |
 | GET | `/admin/appointments` | All appointments |
 | GET | `/admin/audit` | Paginated audit log |
+| GET | `/admin/staff/roles` | Owner only: list predefined roles and permissions |
+| PATCH | `/admin/users/:id/staff-roles` | Owner only: assign/revoke a staff role |
+| GET | `/admin/staff/role-requests` | Owner only: list pending requests |
+| PATCH | `/admin/staff/role-requests/:id` | Owner only: approve/reject a request |
 ---
 ## 7. Suggested demo flow
 1. Log in as **seller** → *Compliance* → upload any PDF/JPG for KYC.
