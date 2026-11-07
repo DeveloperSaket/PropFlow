@@ -4,16 +4,8 @@ import { config } from './config.js';
 import { initSchema } from './db.js';
 import { ensureAdmin } from './bootstrap.js';
 import { notFound, errorHandler } from './middleware/error.js';
-import authRoutes from './routes/auth.js';
-import propertyRoutes from './routes/properties.js';
-import interestRoutes from './routes/interests.js';
-import appointmentRoutes from './routes/appointments.js';
-import complianceRoutes from './routes/compliance.js';
-import adminRoutes from './routes/admin.js';
 initSchema();
 ensureAdmin();
-<<<<<<< Updated upstream
-=======
 const [
   { default: authRoutes },
   { default: propertyRoutes },
@@ -31,7 +23,6 @@ const [
   import('./routes/admin.js'),
   import('./routes/staff.js'),
 ]);
->>>>>>> Stashed changes
 const app = express();
 app.set('trust proxy', true);
 app.use(cors({ origin: config.corsOrigin === '*' ? true : config.corsOrigin.split(',') }));
