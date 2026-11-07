@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../api/client.js';
-import { useAuth } from '../context/AuthContext.jsx';
-import { Alert, Badge } from '../components/ui.jsx';
-import Spinner from '../lib/Spinner/index.jsx';
-import Form, { Input } from '../lib/Form/index.jsx';
+import { api } from '../../api/client.js';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { Alert, Badge } from '../../components/ui.jsx';
+import Spinner from '../../lib/Spinner/index.jsx';
+import Form, { Input } from '../../lib/Form/index.jsx';
+import './Profile.scss';
 
 function Detail({ label, children }) {
   return (

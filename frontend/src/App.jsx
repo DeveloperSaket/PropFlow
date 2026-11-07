@@ -15,7 +15,7 @@ import PropertyForm from './pages/PropertyForm.jsx';
 import StaffDashboard from './pages/StaffDashboard.jsx';
 import StaffRoleRequest from './pages/StaffRoleRequest.jsx';
 import Kyc from './pages/Kyc.jsx';
-import Profile from './pages/Profile.jsx';
+import Profile from './pages/profile/Profile.jsx';
 const AccountTerms = lazy(() => import('./pages/AccountTerms.jsx'));
 function Protected({ children, roles, staffOnly = false }) {
   const { user, loading } = useAuth();
