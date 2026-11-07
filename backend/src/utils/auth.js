@@ -21,5 +21,10 @@ export function verifyToken(token) {
 export function publicUser(u) {
   if (!u) return null;
   const { password_hash, ...rest } = u;
-  return { ...rest, is_agent: Boolean(rest.is_agent) };
+  return {
+    ...rest,
+    is_agent: Boolean(rest.is_agent),
+    staff_roles: rest.staff_roles || [],
+    permissions: rest.permissions || [],
+  };
 }

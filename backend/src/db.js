@@ -213,4 +213,127 @@ export function initSchema() {
     SET url = '/uploads/properties/' || substr(url, 10)
     WHERE url GLOB '/uploads/property_*'
   `).run();
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS staff_profiles (
+      user_id             INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE RESTRICT,
+      job_title           TEXT,
+      team                TEXT,
+      manager_user_id     INTEGER REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
+      employment_status   TEXT NOT NULL DEFAULT 'active'
+                            CHECK (employment_status IN ('active', 'on_leave', 'departed')),
+      created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS roles (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      role_key      TEXT NOT NULL UNIQUE,
+      name          TEXT NOT NULL,
+      description   TEXT,
+      is_system_role INTEGER NOT NULL DEFAULT 1 CHECK (is_system_role IN (0, 1))
+    );
+    CREATE TABLE IF NOT EXISTS permissions (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      permission_key  TEXT NOT NULL UNIQUE,
+      description     TEXT
+    );
+    CREATE TABLE IF NOT EXISTS role_permissions (
+      role_id       INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+      permission_id INTEGER NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+      PRIMARY KEY (role_id, permission_id)
+    );
+    CREATE TABLE IF NOT EXISTS user_roles (
+      user_id     INTEGER NOT NULL REFERENCES staff_profiles(user_id) ON DELETE CASCADE,
+      role_id     INTEGER NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
+      granted_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      granted_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, role_id)
+    );
+    CREATE TABLE IF NOT EXISTS staff_role_requests (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role_id       INTEGER NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
+      justification TEXT NOT NULL,
+      status        TEXT NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending', 'approved', 'rejected')),
+      reviewed_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      reviewed_at   TEXT,
+      review_note   TEXT,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS app_migrations (
+      migration_key TEXT PRIMARY KEY,
+      applied_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_staff_role_requests_pending
+      ON staff_role_requests(user_id, role_id) WHERE status = 'pending';
+    CREATE INDEX IF NOT EXISTS idx_staff_role_requests_status
+      ON staff_role_requests(status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role_id);
+  `);
+
+  const permissions = [
+    ['dashboard.read', 'View staff dashboard metrics'],
+    ['users.read', 'View platform user accounts'],
+    ['users.manage', 'Activate and deactivate platform accounts'],
+    ['users.agent', 'Manage agent flags on platform accounts'],
+    ['kyc.review', 'Review KYC submissions'],
+    ['listings.read', 'View listings awaiting moderation'],
+    ['listings.review', 'Approve or reject listings'],
+    ['listings.feature', 'Feature listings'],
+    ['appointments.read', 'View platform appointments'],
+    ['audit.read', 'View audit records'],
+    ['staff.manage', 'Assign and revoke staff roles'],
+    ['staff.requests.review', 'Approve or reject staff role requests'],
+  ];
+  const roles = [
+    ['owner', 'Owner / Super Admin', 'Manage staff and all platform administration'],
+    ['listing_moderator', 'Listing Moderator', 'Review and feature property listings'],
+    ['compliance_reviewer', 'Compliance Reviewer', 'Review user KYC submissions'],
+    ['support_agent', 'Support Agent', 'Look up users and view appointments'],
+    ['read_only_analyst', 'Read-only Analyst', 'View dashboard metrics and audit records'],
+  ];
+  const permissionsByRole = {
+    owner: permissions.map(([key]) => key),
+    listing_moderator: ['dashboard.read', 'listings.read', 'listings.review', 'listings.feature'],
+    compliance_reviewer: ['dashboard.read', 'users.read', 'kyc.review'],
+    support_agent: ['dashboard.read', 'users.read', 'appointments.read'],
+    read_only_analyst: ['dashboard.read', 'audit.read'],
+  };
+  const insertPermission = db.prepare(
+    'INSERT OR IGNORE INTO permissions (permission_key, description) VALUES (?, ?)'
+  );
+  for (const [key, description] of permissions) insertPermission.run(key, description);
+  const insertRole = db.prepare(
+    'INSERT OR IGNORE INTO roles (role_key, name, description) VALUES (?, ?, ?)'
+  );
+  for (const [key, name, description] of roles) insertRole.run(key, name, description);
+  const getPermissionId = db.prepare('SELECT id FROM permissions WHERE permission_key = ?');
+  const getRoleId = db.prepare('SELECT id FROM roles WHERE role_key = ?');
+  const insertRolePermission = db.prepare(
+    'INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)'
+  );
+  for (const [roleKey, permissionKeys] of Object.entries(permissionsByRole)) {
+    const roleId = getRoleId.get(roleKey).id;
+    for (const permissionKey of permissionKeys) {
+      insertRolePermission.run(roleId, getPermissionId.get(permissionKey).id);
+    }
+  }
+
+  const legacyAdminMigration = 'staff-roles-owner-backfill-v1';
+  if (!db.prepare('SELECT 1 FROM app_migrations WHERE migration_key = ?').get(legacyAdminMigration)) {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.prepare("INSERT OR IGNORE INTO staff_profiles (user_id) SELECT id FROM users WHERE role = 'admin'").run();
+      db.prepare(`
+        INSERT OR IGNORE INTO user_roles (user_id, role_id)
+        SELECT id, ? FROM users WHERE role = 'admin'
+      `).run(getRoleId.get('owner').id);
+      db.prepare('INSERT INTO app_migrations (migration_key) VALUES (?)').run(legacyAdminMigration);
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  }
 }

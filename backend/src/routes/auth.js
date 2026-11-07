@@ -4,12 +4,12 @@ import {
   hashPassword,
   verifyPassword,
   signToken,
-  publicUser,
 } from '../utils/auth.js';
 import { required, isEmail, HttpError } from '../utils/validate.js';
 import { authenticate } from '../middleware/auth.js';
 import { audit } from '../utils/audit.js';
 import { createFirebaseCustomToken } from '../utils/firebase.js';
+import { userWithStaffAccess } from '../utils/staff.js';
 const router = Router();
 const findByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
 const insertUser = db.prepare(
@@ -47,7 +47,7 @@ router.post('/register', (req, res) => {
     ip: req.ip,
   });
   const token = signToken(user);
-  res.status(201).json({ token, user: publicUser(user) });
+  res.status(201).json({ token, user: userWithStaffAccess(user) });
 });
 // POST /api/auth/login
 router.post('/login', (req, res) => {
@@ -66,12 +66,12 @@ router.post('/login', (req, res) => {
     ip: req.ip,
   });
   const token = signToken(user);
-  res.json({ token, user: publicUser(user) });
+  res.json({ token, user: userWithStaffAccess(user) });
 });
 // GET /api/auth/me
 router.get('/me', authenticate, (req, res) => {
   const user = getById.get(req.user.id);
-  res.json({ user: publicUser(user) });
+  res.json({ user: userWithStaffAccess(user) });
 });
 // GET /api/auth/firebase-token — exchange the app JWT identity for Firebase Auth
 router.get('/firebase-token', authenticate, async (req, res, next) => {
