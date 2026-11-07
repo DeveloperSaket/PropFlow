@@ -19,6 +19,7 @@ export function initSchema() {
       name          TEXT NOT NULL,
       email         TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
+      token_version INTEGER NOT NULL DEFAULT 0,
       phone         TEXT,
       is_agent      INTEGER NOT NULL DEFAULT 0 CHECK (is_agent IN (0, 1)),
       kyc_status    TEXT NOT NULL DEFAULT 'unverified'
@@ -112,6 +113,9 @@ export function initSchema() {
   if (!userColumns.some((column) => column.name === 'is_agent')) {
     db.exec('ALTER TABLE users ADD COLUMN is_agent INTEGER NOT NULL DEFAULT 0 CHECK (is_agent IN (0, 1))');
   }
+  if (!userColumns.some((column) => column.name === 'token_version')) {
+    db.exec('ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0');
+  }
 
   const userTable = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get();
   if (!userTable.sql.includes("'member'") || userTable.sql.includes("'buyer'") || userTable.sql.includes("'seller'")) {
@@ -125,6 +129,7 @@ export function initSchema() {
           name          TEXT NOT NULL,
           email         TEXT NOT NULL UNIQUE,
           password_hash TEXT NOT NULL,
+          token_version INTEGER NOT NULL DEFAULT 0,
           phone         TEXT,
           is_agent      INTEGER NOT NULL DEFAULT 0 CHECK (is_agent IN (0, 1)),
           kyc_status    TEXT NOT NULL DEFAULT 'unverified'
@@ -135,7 +140,7 @@ export function initSchema() {
         );
         INSERT INTO users_new
           SELECT id, CASE WHEN role IN ('buyer','seller') THEN 'member' ELSE role END,
-                 name, email, password_hash, phone, is_agent, kyc_status,
+                 name, email, password_hash, token_version, phone, is_agent, kyc_status,
                  terms_accepted_at, active, created_at
           FROM users;
         DROP TABLE users;

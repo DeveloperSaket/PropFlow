@@ -105,6 +105,7 @@ export default function Navbar() {
         <div className="nav-actions" onClick={() => setMobileMenuOpen(false)}>
           {user ? (
             <>
+              <NavLink to="/profile">Profile</NavLink>
               <span className="pill">
                 {user.name} · {isStaff ? 'Staff' : 'Account'}
                 {user.is_agent && ' · Agent'}

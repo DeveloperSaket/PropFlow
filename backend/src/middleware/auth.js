@@ -13,7 +13,10 @@ export function authenticate(req, _res, next) {
     const user = getUser.get(payload.id);
     if (!user) throw new HttpError(401, 'User no longer exists');
     if (!user.active) throw new HttpError(403, 'Account is deactivated');
-    const { password_hash, ...safe } = user;
+    if (Number(payload.tv || 0) !== Number(user.token_version || 0)) {
+      throw new HttpError(401, 'Session expired; please log in again');
+    }
+    const { password_hash, token_version, ...safe } = user;
     req.user = { ...safe, ...getStaffAccess(user.id) };
     next();
   } catch (err) {
@@ -29,8 +32,8 @@ export function optionalAuth(req, _res, next) {
   try {
     const payload = verifyToken(token);
     const user = getUser.get(payload.id);
-    if (user && user.active) {
-      const { password_hash, ...safe } = user;
+    if (user && user.active && Number(payload.tv || 0) === Number(user.token_version || 0)) {
+      const { password_hash, token_version, ...safe } = user;
       req.user = { ...safe, ...getStaffAccess(user.id) };
     }
   } catch {
