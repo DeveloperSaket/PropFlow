@@ -9,7 +9,7 @@ export function verifyPassword(plain, hash) {
 }
 export function signToken(user) {
   return jwt.sign(
-    { id: user.id, role: user.role, email: user.email },
+    { id: user.id, role: user.role, email: user.email, tv: user.token_version || 0 },
     config.jwtSecret,
     { expiresIn: config.jwtExpiresIn }
   );
@@ -20,7 +20,7 @@ export function verifyToken(token) {
 // Strip sensitive fields before returning a user over the API
 export function publicUser(u) {
   if (!u) return null;
-  const { password_hash, ...rest } = u;
+  const { password_hash, token_version, ...rest } = u;
   return {
     ...rest,
     is_agent: Boolean(rest.is_agent),

@@ -15,6 +15,7 @@ import PropertyForm from './pages/PropertyForm.jsx';
 import StaffDashboard from './pages/StaffDashboard.jsx';
 import StaffRoleRequest from './pages/StaffRoleRequest.jsx';
 import Kyc from './pages/Kyc.jsx';
+import Profile from './pages/profile/Profile.jsx';
 const AccountTerms = lazy(() => import('./pages/AccountTerms.jsx'));
 function Protected({ children, roles, staffOnly = false }) {
   const { user, loading } = useAuth();
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/properties/:id" element={<PropertyDetail />} />
         <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
         <Route path="/register" element={<GuestOnly><Register /></GuestOnly>} />
+        <Route path="/profile" element={<Protected><Profile /></Protected>} />
         <Route path="/staff/request-access" element={<Protected><StaffRoleRequest /></Protected>} />
         <Route
           path="/static/compliance/account-terms-and-condition"

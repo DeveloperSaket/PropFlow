@@ -61,6 +61,15 @@ export function AuthProvider({ children }) {
     await connectFirebase();
     return user;
   };
+  const changePassword = async (currentPassword, newPassword) => {
+    const { token, user } = await api.post('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    });
+    setToken(token);
+    setUser(user);
+    return user;
+  };
   const register = async (payload) => {
     const { token, user } = await api.post('/auth/register', payload);
     queryClient.clear();
@@ -76,7 +85,7 @@ export function AuthProvider({ children }) {
     if (auth) signOut(auth).catch((error) => setFirebaseError(error.message));
   };
   return (
-    <AuthContext.Provider value={{ user, loading, firebaseError, chatAvailable, login, register, logout, refresh, setUser }}>
+    <AuthContext.Provider value={{ user, loading, firebaseError, chatAvailable, login, register, changePassword, logout, refresh, setUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,7 +5,7 @@ verification, listing approval, and an immutable audit trail).
 - **Frontend:** React 18 + Vite + React Router
 - **Backend:** Node.js + Express
 - **Database:** SQLite (via Node's built-in `node:sqlite` — zero native build)
-- **Auth:** JWT (stateless), bcrypt password hashing, role-based access control
+- **Auth:** JWT sessions, bcrypt password hashing, role/permission-based access control
 ---
 ## 1. Roles & capabilities
 | Role | Can do |
@@ -114,7 +114,7 @@ propflow/
         ├── context/AuthContext.jsx
         ├── components/        # PropertyCard, UI helpers
         └── pages/             # Home, Browse, PropertyDetail, Login, Register,
-                               # Kyc, Buyer/Seller/Admin dashboards, PropertyForm
+                               # Profile, Kyc, Buyer/Seller/Staff dashboards, PropertyForm
 ```
 ---
 ## 6. API reference (prefix `/api`)
@@ -124,9 +124,15 @@ propflow/
 | POST | `/auth/register` | — | Register buyer/seller (requires `acceptTerms`) |
 | POST | `/auth/login` | — | Login, returns JWT |
 | GET | `/auth/me` | token | Current user |
+| POST | `/auth/change-password` | token + current password | Change password, rotate session version, and return a replacement JWT |
 | GET | `/auth/firebase-token` | token | Mint a Firebase custom token for the current user |
 | GET | `/staff/roles` | token | List requestable roles, assigned roles, and the user's request history |
 | POST | `/staff/role-requests` | token + `@negobrick.com` email | Submit a role request with justification |
+
+Signed-in users can view their account details and change their password at
+`/profile`. Password changes require the current password and invalidate
+previous sessions. Email-based recovery for forgotten passwords is not
+available until an email delivery and verification flow is configured.
 ### Properties
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
