@@ -1,6 +1,7 @@
 import { verifyToken } from '../utils/auth.js';
 import { db } from '../db.js';
 import { HttpError } from '../utils/validate.js';
+import { getStaffAccess } from '../utils/staff.js';
 const getUser = db.prepare('SELECT * FROM users WHERE id = ?');
 /** Require a valid JWT. Attaches req.user (fresh from DB). */
 export function authenticate(req, _res, next) {
@@ -13,7 +14,7 @@ export function authenticate(req, _res, next) {
     if (!user) throw new HttpError(401, 'User no longer exists');
     if (!user.active) throw new HttpError(403, 'Account is deactivated');
     const { password_hash, ...safe } = user;
-    req.user = safe;
+    req.user = { ...safe, ...getStaffAccess(user.id) };
     next();
   } catch (err) {
     if (err instanceof HttpError) return next(err);
@@ -30,7 +31,7 @@ export function optionalAuth(req, _res, next) {
     const user = getUser.get(payload.id);
     if (user && user.active) {
       const { password_hash, ...safe } = user;
-      req.user = safe;
+      req.user = { ...safe, ...getStaffAccess(user.id) };
     }
   } catch {
     /* ignore invalid token for optional auth */
@@ -42,6 +43,16 @@ export function requireRole(...roles) {
   return (req, _res, next) => {
     if (!req.user) return next(new HttpError(401, 'Authentication required'));
     if (!roles.includes(req.user.role)) {
+      return next(new HttpError(403, 'You do not have permission to perform this action'));
+    }
+    next();
+  };
+}
+/** Restrict a route to users assigned every requested permission. */
+export function requirePermission(...permissions) {
+  return (req, _res, next) => {
+    if (!req.user) return next(new HttpError(401, 'Authentication required'));
+    if (!permissions.every((permission) => req.user.permissions?.includes(permission))) {
       return next(new HttpError(403, 'You do not have permission to perform this action'));
     }
     next();

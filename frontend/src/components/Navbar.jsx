@@ -7,6 +7,7 @@ import './Navbar.scss';
 
 export default function Navbar() {
   const { user, logout, chatAvailable } = useAuth();
+  const isStaff = Boolean(user?.staff_roles?.length || user?.role === 'admin');
   const nav = useNavigate();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -94,7 +95,10 @@ export default function Navbar() {
               Chats{unreadChatCount > 0 && <span className="nav-unread" aria-label={`${unreadChatCount} unread chats`}>{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>}
             </NavLink>
           )}
-          {user?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
+          {isStaff && <NavLink to="/admin">Staff</NavLink>}
+          {user && user.email?.toLowerCase().endsWith('@negobrick.com') && (
+            <NavLink to="/staff/request-access">Request staff access</NavLink>
+          )}
           {user && user.role !== 'admin' && <NavLink to="/kyc">Compliance</NavLink>}
         </div>
         <span className="spacer" />
@@ -102,7 +106,7 @@ export default function Navbar() {
           {user ? (
             <>
               <span className="pill">
-                {user.name} · {user.role === 'admin' ? 'Admin' : 'Account'}
+                {user.name} · {isStaff ? 'Staff' : 'Account'}
                 {user.is_agent && ' · Agent'}
               </span>
               <a onClick={doLogout} className="cursor-pointer">Logout</a>
