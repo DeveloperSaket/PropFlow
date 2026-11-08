@@ -12,17 +12,17 @@ const insertInterest = db.prepare(
     'INSERT INTO interests (property_id, buyer_id, message) VALUES (?, ?, ?)'
 );
 // POST /api/interests — buyer expresses interest in a property
-router.post('/', authenticate, requireRole('member'), (req, res) => {
+router.post('/', authenticate, requireRole('member'), async (req, res) => {
     const { property_id, message } = req.body;
-    const prop = getProperty.get(property_id);
+    const prop = await getProperty.get(property_id);
     if (!prop || prop.status !== 'approved')
         throw new HttpError(404, 'Property not available');
     if (prop.seller_id === req.user.id)
         throw new HttpError(403, 'You cannot express interest in your own listing');
-    if (existing.get(property_id, req.user.id))
+    if (await existing.get(property_id, req.user.id))
         throw new HttpError(409, 'You have already expressed interest in this property');
-    const info = insertInterest.run(property_id, req.user.id, message || null);
-    audit({
+    const info = await insertInterest.run(property_id, req.user.id, message || null);
+    await audit({
         actorId: req.user.id,
         action: 'interest.create',
         entity: 'property',
@@ -30,12 +30,12 @@ router.post('/', authenticate, requireRole('member'), (req, res) => {
         ip: req.ip,
     });
     res.status(201).json({
-        data: db.prepare('SELECT * FROM interests WHERE id = ?').get(info.lastInsertRowid),
+        data: await db.prepare('SELECT * FROM interests WHERE id = ?').get(info.lastInsertRowid),
     });
 });
 // GET /api/interests/mine — buyer's tracked interests (dashboard)
-router.get('/mine', authenticate, requireRole('member'), (req, res) => {
-    const rows = db
+router.get('/mine', authenticate, requireRole('member'), async (req, res) => {
+    const rows = await db
         .prepare(
             `SELECT i.*, p.title, p.price, p.city, p.status AS property_status,
               p.property_type, p.listing_type, p.seller_id, u.name AS seller_name
@@ -49,8 +49,8 @@ router.get('/mine', authenticate, requireRole('member'), (req, res) => {
     res.json({ data: rows });
 });
 // GET /api/interests/received — seller sees leads on their properties
-router.get('/received', authenticate, requireRole('member'), (req, res) => {
-    const rows = db
+router.get('/received', authenticate, requireRole('member'), async (req, res) => {
+    const rows = await db
         .prepare(
             `SELECT i.*, p.title, p.city, p.price,
               b.name AS buyer_name, b.email AS buyer_email, b.phone AS buyer_phone,
@@ -65,10 +65,10 @@ router.get('/received', authenticate, requireRole('member'), (req, res) => {
     res.json({ data: rows });
 });
 // PATCH /api/interests/:id/status — seller updates lead status
-router.patch('/:id/status', authenticate, requireRole('member'), (req, res) => {
+router.patch('/:id/status', authenticate, requireRole('member'), async (req, res) => {
     const { status } = req.body;
     oneOf(status, ['new', 'contacted', 'negotiating', 'closed', 'withdrawn'], 'status');
-    const row = db
+    const row = await db
         .prepare(
             `SELECT i.*, p.seller_id FROM interests i
        JOIN properties p ON p.id = i.property_id WHERE i.id = ?`
@@ -81,8 +81,8 @@ router.patch('/:id/status', authenticate, requireRole('member'), (req, res) => {
     if (!isSeller && !isBuyer) throw new HttpError(403, 'Not allowed');
     if (isBuyer && status !== 'withdrawn')
         throw new HttpError(403, 'Buyers can only withdraw their interest');
-    db.prepare('UPDATE interests SET status = ? WHERE id = ?').run(status, row.id);
-    audit({
+    await db.prepare('UPDATE interests SET status = ? WHERE id = ?').run(status, row.id);
+    await audit({
         actorId: req.user.id,
         action: 'interest.status',
         entity: 'interest',
@@ -90,6 +90,6 @@ router.patch('/:id/status', authenticate, requireRole('member'), (req, res) => {
         meta: { status },
         ip: req.ip,
     });
-    res.json({ data: db.prepare('SELECT * FROM interests WHERE id = ?').get(row.id) });
+    res.json({ data: await db.prepare('SELECT * FROM interests WHERE id = ?').get(row.id) });
 });
 export default router;

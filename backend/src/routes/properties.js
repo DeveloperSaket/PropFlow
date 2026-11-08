@@ -119,31 +119,31 @@ function validateImageCount(urls, files) {
     throw new HttpError(400, 'A listing can have at most 12 images');
   }
 }
-function persistImages(propertyId, urls, files) {
+async function persistImages(propertyId, urls, files) {
   for (const file of files) {
-    insertImage.run(
+    await insertImage.run(
       propertyId,
       `/uploads/properties/${encodeURIComponent(path.basename(file.path))}`
     );
   }
   for (const url of urls) {
-    if (typeof url === 'string' && url.trim()) insertImage.run(propertyId, url.trim());
+    if (typeof url === 'string' && url.trim()) await insertImage.run(propertyId, url.trim());
   }
 }
-function hydrate(row, includePrivateDetails = true) {
+async function hydrate(row, includePrivateDetails = true) {
   if (!row) return null;
-  const images = getImages.all(row.id).map((r) => r.url);
+  const images = (await getImages.all(row.id)).map((r) => r.url);
   if (!includePrivateDetails) {
     const { address, pincode, ...publicRow } = row;
     return { ...publicRow, images };
   }
-  const interest_count = countInterests.get(row.id).c;
+  const interest_count = (await countInterests.get(row.id)).c;
   return { ...row, images, interest_count };
 }
 // GET /api/properties  — public search with filters
 // Query: q, type, listing, city, state, minPrice, maxPrice, bedrooms,
 //        sort (price_asc|price_desc|newest), page, limit, status (admin/seller only)
-router.get('/', optionalAuth, (req, res) => {
+router.get('/', optionalAuth, async (req, res) => {
   const {
     q,
     type,
@@ -178,7 +178,7 @@ router.get('/', optionalAuth, (req, res) => {
     where.push("p.status = 'approved'");
   }
   if (q) {
-    where.push('(p.title LIKE @q OR p.description LIKE @q OR p.address LIKE @q)');
+    where.push('(p.title ILIKE @q OR p.description ILIKE @q OR p.address ILIKE @q)');
     params.q = `%${q}%`;
   }
   if (type) {
@@ -192,11 +192,11 @@ router.get('/', optionalAuth, (req, res) => {
     params.listing = listing;
   }
   if (city) {
-    where.push('p.city LIKE @city');
+    where.push('p.city ILIKE @city');
     params.city = `%${city}%`;
   }
   if (state) {
-    where.push('p.state LIKE @state');
+    where.push('p.state ILIKE @state');
     params.state = `%${state}%`;
   }
   const min = toNumber(minPrice);
@@ -221,14 +221,14 @@ router.get('/', optionalAuth, (req, res) => {
       newest: 'p.created_at DESC',
     }[sort] || 'p.created_at DESC';
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const total = db
+  const total = (await db
     .prepare(`SELECT COUNT(*) AS c FROM properties p ${whereSql}`)
-    .get(params).c;
+    .get(params)).c;
   const pageNum = Math.max(1, toNumber(page, 1));
   const pageSize = Math.min(50, Math.max(1, toNumber(limit, 12)));
   params.limit = pageSize;
   params.offset = (pageNum - 1) * pageSize;
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT p.*, u.name AS seller_name
        FROM properties p JOIN users u ON u.id = p.seller_id
@@ -238,7 +238,7 @@ router.get('/', optionalAuth, (req, res) => {
     )
     .all(params);
   res.json({
-    data: rows.map((row) => hydrate(row, Boolean(req.user))),
+    data: await Promise.all(rows.map((row) => hydrate(row, Boolean(req.user)))),
     pagination: {
       page: pageNum,
       limit: pageSize,
@@ -248,8 +248,8 @@ router.get('/', optionalAuth, (req, res) => {
   });
 });
 // GET /api/properties/:id
-router.get('/:id', optionalAuth, (req, res) => {
-  const row = getPropertyRow.get(req.params.id);
+router.get('/:id', optionalAuth, async (req, res) => {
+  const row = await getPropertyRow.get(req.params.id);
   if (!row) throw new HttpError(404, 'Property not found');
   const isOwner = req.user && req.user.id === row.seller_id;
   const isAdmin = req.user && req.user.role === 'admin';
@@ -258,12 +258,12 @@ router.get('/:id', optionalAuth, (req, res) => {
   }
   // increment views for public (non-owner) visits
   if (!isOwner) {
-    db.prepare('UPDATE properties SET views = views + 1 WHERE id = ?').run(row.id);
+    await db.prepare('UPDATE properties SET views = views + 1 WHERE id = ?').run(row.id);
   }
-  res.json({ data: hydrate(getPropertyRow.get(req.params.id), Boolean(req.user)) });
+  res.json({ data: await hydrate(await getPropertyRow.get(req.params.id), Boolean(req.user)) });
 });
 // POST /api/properties — seller creates a listing (requires KYC)
-router.post('/', authenticate, requireRole('member'), requireKyc, propertyImageUpload, (req, res) => {
+router.post('/', authenticate, requireRole('member'), requireKyc, propertyImageUpload, async (req, res) => {
   const uploadedFiles = req.files || [];
   try {
     validateImageFiles(uploadedFiles);
@@ -279,7 +279,7 @@ router.post('/', authenticate, requireRole('member'), requireKyc, propertyImageU
     // New listings start in "pending" for admin compliance review
     const saveDraft = b.saveDraft === true || b.saveDraft === 'true';
     const status = saveDraft ? 'draft' : 'pending';
-    const info = insertProperty.run({
+    const info = await insertProperty.run({
       seller_id: req.user.id,
       title: b.title,
       description: b.description || null,
@@ -297,8 +297,8 @@ router.post('/', authenticate, requireRole('member'), requireKyc, propertyImageU
       status,
     });
     const id = info.lastInsertRowid;
-    persistImages(id, imageUrls, uploadedFiles);
-    audit({
+    await persistImages(id, imageUrls, uploadedFiles);
+    await audit({
       actorId: req.user.id,
       action: 'property.create',
       entity: 'property',
@@ -306,18 +306,18 @@ router.post('/', authenticate, requireRole('member'), requireKyc, propertyImageU
       meta: { status },
       ip: req.ip,
     });
-    res.status(201).json({ data: hydrate(getPropertyRow.get(id)) });
+    res.status(201).json({ data: await hydrate(await getPropertyRow.get(id)) });
   } catch (error) {
     cleanupImageFiles(uploadedFiles);
     throw error;
   }
 });
 // PUT /api/properties/:id — owner updates (re-enters pending review)
-router.put('/:id', authenticate, requireRole('member', 'admin'), propertyImageUpload, (req, res) => {
+router.put('/:id', authenticate, requireRole('member', 'admin'), propertyImageUpload, async (req, res) => {
   const uploadedFiles = req.files || [];
   try {
     validateImageFiles(uploadedFiles);
-    const row = getPropertyRow.get(req.params.id);
+    const row = await getPropertyRow.get(req.params.id);
     if (!row) throw new HttpError(404, 'Property not found');
     const isAdmin = req.user.role === 'admin';
     if (!isAdmin && row.seller_id !== req.user.id)
@@ -353,7 +353,7 @@ router.put('/:id', authenticate, requireRole('member', 'admin'), propertyImageUp
       oneOf(b.status, ['draft', 'pending', 'approved', 'rejected', 'sold'], 'status');
       status = b.status;
     }
-    db.prepare(
+    await db.prepare(
       `UPDATE properties SET
          title=@title, description=@description, property_type=@property_type,
          listing_type=@listing_type, price=@price, area_sqft=@area_sqft,
@@ -363,10 +363,10 @@ router.put('/:id', authenticate, requireRole('member', 'admin'), propertyImageUp
        WHERE id=@id`
     ).run({ ...fields, status, id: row.id });
     if (b.images !== undefined || uploadedFiles.length) {
-      db.prepare('DELETE FROM property_images WHERE property_id = ?').run(row.id);
-      persistImages(row.id, imageUrls, uploadedFiles);
+      await db.prepare('DELETE FROM property_images WHERE property_id = ?').run(row.id);
+      await persistImages(row.id, imageUrls, uploadedFiles);
     }
-    audit({
+    await audit({
       actorId: req.user.id,
       action: 'property.update',
       entity: 'property',
@@ -374,32 +374,32 @@ router.put('/:id', authenticate, requireRole('member', 'admin'), propertyImageUp
       meta: { status },
       ip: req.ip,
     });
-    res.json({ data: hydrate(getPropertyRow.get(row.id)) });
+    res.json({ data: await hydrate(await getPropertyRow.get(row.id)) });
   } catch (error) {
     cleanupImageFiles(uploadedFiles);
     throw error;
   }
 });
 // PATCH /api/properties/:id/sold — owner marks as sold
-router.patch('/:id/sold', authenticate, requireRole('member', 'admin'), (req, res) => {
-  const row = getPropertyRow.get(req.params.id);
+router.patch('/:id/sold', authenticate, requireRole('member', 'admin'), async (req, res) => {
+  const row = await getPropertyRow.get(req.params.id);
   if (!row) throw new HttpError(404, 'Property not found');
   if (req.user.role !== 'admin' && row.seller_id !== req.user.id)
     throw new HttpError(403, 'Not your listing');
-  db.prepare("UPDATE properties SET status='sold', updated_at=datetime('now') WHERE id=?").run(
+  await db.prepare("UPDATE properties SET status='sold', updated_at=datetime('now') WHERE id=?").run(
     row.id
   );
-  audit({ actorId: req.user.id, action: 'property.sold', entity: 'property', entityId: row.id, ip: req.ip });
-  res.json({ data: hydrate(getPropertyRow.get(row.id)) });
+  await audit({ actorId: req.user.id, action: 'property.sold', entity: 'property', entityId: row.id, ip: req.ip });
+  res.json({ data: await hydrate(await getPropertyRow.get(row.id)) });
 });
 // DELETE /api/properties/:id
-router.delete('/:id', authenticate, requireRole('member', 'admin'), (req, res) => {
-  const row = getPropertyRow.get(req.params.id);
+router.delete('/:id', authenticate, requireRole('member', 'admin'), async (req, res) => {
+  const row = await getPropertyRow.get(req.params.id);
   if (!row) throw new HttpError(404, 'Property not found');
   if (req.user.role !== 'admin' && row.seller_id !== req.user.id)
     throw new HttpError(403, 'Not your listing');
-  db.prepare('DELETE FROM properties WHERE id = ?').run(row.id);
-  audit({ actorId: req.user.id, action: 'property.delete', entity: 'property', entityId: row.id, ip: req.ip });
+  await db.prepare('DELETE FROM properties WHERE id = ?').run(row.id);
+  await audit({ actorId: req.user.id, action: 'property.delete', entity: 'property', entityId: row.id, ip: req.ip });
   res.json({ ok: true });
 });
 export default router;

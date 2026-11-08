@@ -1,7 +1,9 @@
 node_modules
 backend/.env
+.env
+backend/data/propflow-migration-backup.db
 backend/uploads/
 frontend/.env.local
 *.service-account.json
 frontend/dist
-
+backups/

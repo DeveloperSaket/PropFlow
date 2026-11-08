@@ -4,7 +4,7 @@ A full-stack platform connecting **property sellers** and **buyers**, with a
 verification, listing approval, and an immutable audit trail).
 - **Frontend:** React 18 + Vite + React Router
 - **Backend:** Node.js + Express
-- **Database:** SQLite (via Node's built-in `node:sqlite` — zero native build)
+- **Database:** PostgreSQL (via `pg`; self-hostable with Docker Compose)
 - **Auth:** JWT sessions, bcrypt password hashing, role/permission-based access control
 ---
 ## 1. Roles & capabilities
@@ -37,17 +37,27 @@ an identity guarantee.
 5. **Account controls** — admins can deactivate accounts; deactivated users are blocked at auth time.
 ---
 ## 3. Quick start
-Requires **Node 22+** (uses the built-in `node:sqlite`).
+Requires **Node 22.15+**, npm, and Docker Compose for the local PostgreSQL
+container. The application uses PostgreSQL; the SQLite import utility reads
+the previous SQLite database.
 ```bash
 # from the repo root
 npm run install:all     # installs backend + frontend deps
-npm run seed            # creates the DB, an admin, and demo data
-npm run dev             # runs backend (:5005) and frontend (:5173) together
+Copy-Item .env.example .env
+# Set unique random POSTGRES_PASSWORD and POSTGRES_APP_PASSWORD values.
+Copy-Item backend\.env.example backend\.env
+# Set DATABASE_URL with POSTGRES_APP_PASSWORD and a unique JWT_SECRET in backend/.env.
+docker compose up -d postgres
+Set-Location backend
+npm run migrate         # apply PostgreSQL schema
+npm run seed            # development only; never run against production
+Set-Location ..
+npm run dev             # runs backend (:5112) and frontend (:5173) together
 ```
 Then open **http://localhost:5173**.
 > Run servers separately if you prefer:
 > `npm run dev:backend` and (in another shell) `npm run dev:frontend`.
-### Demo accounts (created by `npm run seed`)
+### Development demo accounts (created by `npm run seed`; never seed production)
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | `admin@propflow.test` | `Admin@12345` |
@@ -58,10 +68,12 @@ The login screen has one-click buttons to autofill these.
 ## 4. Configuration
 Copy `backend/.env.example` to `backend/.env` and adjust:
 ```
-PORT=5005
+PORT=5112
 JWT_SECRET=<long random string>
 JWT_EXPIRES_IN=7d
-DB_PATH=./data/propflow.db
+DATABASE_URL=postgres://propflow:<URL-encoded-password>@localhost:5432/propflow
+DATABASE_POOL_SIZE=10
+DATABASE_SSL=false
 CORS_ORIGIN=http://localhost:5173
 FIREBASE_PROJECT_ID=<your Firebase project ID>
 # Keep this service-account JSON outside the repository.
@@ -69,7 +81,22 @@ GOOGLE_APPLICATION_CREDENTIALS=C:/secure/path/firebase-service-account.json
 ADMIN_EMAIL=admin@propflow.test
 ADMIN_PASSWORD=Admin@12345
 ```
-An admin account is auto-created on first boot if none exists.
+In development, an admin is auto-created on first boot if none exists. In
+production, configure a non-demo `ADMIN_EMAIL`, a unique `ADMIN_PASSWORD`,
+and a strong `JWT_SECRET` (for example, `admin@negobrick.com`); the
+server refuses to create the first admin without the admin credentials and
+refuses to start without `JWT_SECRET`.
+
+### PostgreSQL persistence and backups
+
+The Compose service stores data in the persistent `propflow-postgres` volume
+and binds port 5432 to loopback only. It creates a separate application role;
+the PostgreSQL superuser credentials are for administration and backups. Do
+not publish PostgreSQL directly to the public internet. For a remote
+self-hosted server, restrict firewall access to the application host and
+require TLS. Back up the database regularly and test restores; a Docker volume is not a backup. See
+[MIGRATING-TO-POSTGRES.md](./MIGRATING-TO-POSTGRES.md) for SQLite import,
+cutover, backup, and restore steps.
 
 ### Agent classification
 Regular accounts are stored as `member` and can both buy and list properties.
@@ -100,14 +127,16 @@ propflow/
 │   ├── src/
 │   │   ├── server.js          # app entry, route mounting
 │   │   ├── config.js          # env config
-│   │   ├── db.js              # SQLite connection + schema
+│   │   ├── db.js              # PostgreSQL pool + migrations
+│   │   ├── migrations/        # versioned PostgreSQL schema
+│   │   ├── migrate-sqlite.js  # one-time SQLite data import
 │   │   ├── bootstrap.js       # auto-create admin
 │   │   ├── seed.js            # demo data
 │   │   ├── middleware/        # auth (authenticate/requireRole/requireKyc), error handler
 │   │   ├── routes/            # auth, properties, interests, appointments, compliance, admin, staff
 │   │   └── utils/             # auth (jwt/bcrypt), staff access, audit, validation
-│   ├── data/                  # sqlite db file (gitignored)
 │   └── uploads/               # KYC documents (gitignored)
+├── compose.yaml               # self-hosted PostgreSQL service
 └── frontend/
     └── src/
         ├── api/client.js      # fetch wrapper + JWT

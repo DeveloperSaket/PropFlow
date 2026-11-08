@@ -18,7 +18,7 @@ const insertUser = db.prepare(
 );
 const getById = db.prepare('SELECT * FROM users WHERE id = ?');
 // POST /api/auth/register
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   const { name, email, password, phone, acceptTerms } = req.body;
   const role = 'member';
   required(req.body, ['name', 'email', 'password']);
@@ -27,9 +27,9 @@ router.post('/register', (req, res) => {
     throw new HttpError(400, 'Password must be at least 8 characters');
   if (!acceptTerms)
     throw new HttpError(400, 'You must accept the Terms & Compliance policy');
-  if (findByEmail.get(email.toLowerCase()))
+  if (await findByEmail.get(email.toLowerCase()))
     throw new HttpError(409, 'An account with this email already exists');
-  const info = insertUser.run(
+  const info = await insertUser.run(
     role,
     name,
     email.toLowerCase(),
@@ -37,8 +37,8 @@ router.post('/register', (req, res) => {
     phone || null,
     new Date().toISOString()
   );
-  const user = getById.get(info.lastInsertRowid);
-  audit({
+  const user = await getById.get(info.lastInsertRowid);
+  await audit({
     actorId: user.id,
     action: 'user.register',
     entity: 'user',
@@ -47,18 +47,18 @@ router.post('/register', (req, res) => {
     ip: req.ip,
   });
   const token = signToken(user);
-  res.status(201).json({ token, user: userWithStaffAccess(user) });
+  res.status(201).json({ token, user: await userWithStaffAccess(user) });
 });
 // POST /api/auth/login
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   required(req.body, ['email', 'password']);
-  const user = findByEmail.get(String(email).toLowerCase());
+  const user = await findByEmail.get(String(email).toLowerCase());
   if (!user || !verifyPassword(password, user.password_hash)) {
     throw new HttpError(401, 'Invalid email or password');
   }
   if (!user.active) throw new HttpError(403, 'Account is deactivated');
-  audit({
+  await audit({
     actorId: user.id,
     action: 'user.login',
     entity: 'user',
@@ -66,15 +66,15 @@ router.post('/login', (req, res) => {
     ip: req.ip,
   });
   const token = signToken(user);
-  res.json({ token, user: userWithStaffAccess(user) });
+  res.json({ token, user: await userWithStaffAccess(user) });
 });
 // GET /api/auth/me
-router.get('/me', authenticate, (req, res) => {
-  const user = getById.get(req.user.id);
-  res.json({ user: userWithStaffAccess(user) });
+router.get('/me', authenticate, async (req, res) => {
+  const user = await getById.get(req.user.id);
+  res.json({ user: await userWithStaffAccess(user) });
 });
 // POST /api/auth/change-password
-router.post('/change-password', authenticate, (req, res) => {
+router.post('/change-password', authenticate, async (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
   if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
     throw new HttpError(400, 'Current password and new password are required');
@@ -83,7 +83,7 @@ router.post('/change-password', authenticate, (req, res) => {
     throw new HttpError(400, 'New password must be at least 8 characters');
   }
 
-  const user = getById.get(req.user.id);
+  const user = await getById.get(req.user.id);
   if (!verifyPassword(currentPassword, user.password_hash)) {
     throw new HttpError(400, 'Current password is incorrect');
   }
@@ -91,13 +91,13 @@ router.post('/change-password', authenticate, (req, res) => {
     throw new HttpError(400, 'New password must be different from the current password');
   }
 
-  db.prepare(`
+  await db.prepare(`
     UPDATE users
     SET password_hash = ?, token_version = token_version + 1
     WHERE id = ?
   `).run(hashPassword(newPassword), user.id);
-  const updatedUser = getById.get(user.id);
-  audit({
+  const updatedUser = await getById.get(user.id);
+  await audit({
     actorId: user.id,
     action: 'user.password_changed',
     entity: 'user',
@@ -106,7 +106,7 @@ router.post('/change-password', authenticate, (req, res) => {
   });
   res.json({
     token: signToken(updatedUser),
-    user: userWithStaffAccess(updatedUser),
+    user: await userWithStaffAccess(updatedUser),
   });
 });
 // GET /api/auth/firebase-token — exchange the app JWT identity for Firebase Auth

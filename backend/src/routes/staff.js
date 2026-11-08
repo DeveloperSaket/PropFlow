@@ -12,22 +12,22 @@ function hasEligibleEmail(email) {
   return String(email || '').trim().toLowerCase().endsWith(STAFF_EMAIL_DOMAIN);
 }
 
-router.get('/roles', (req, res) => {
+router.get('/roles', async (req, res) => {
   const eligible = hasEligibleEmail(req.user.email);
   const roles = eligible
-    ? db.prepare(`
+    ? await db.prepare(`
       SELECT r.role_key, r.name, r.description
       FROM roles r
       WHERE r.role_key <> 'owner'
       ORDER BY r.name
     `).all()
     : [];
-  const assigned = db.prepare(`
+  const assigned = await db.prepare(`
     SELECT r.role_key
     FROM user_roles ur JOIN roles r ON r.id = ur.role_id
     WHERE ur.user_id = ?
-  `).all(req.user.id).map((row) => row.role_key);
-  const requests = db.prepare(`
+  `).all(req.user.id).then((rows) => rows.map((row) => row.role_key));
+  const requests = await db.prepare(`
     SELECT sr.id, r.role_key, r.name AS role_name, sr.justification,
       sr.status, sr.review_note, sr.created_at, sr.reviewed_at
     FROM staff_role_requests sr
@@ -38,7 +38,7 @@ router.get('/roles', (req, res) => {
   res.json({ eligible, data: { roles, assigned, requests } });
 });
 
-router.post('/role-requests', (req, res) => {
+router.post('/role-requests', async (req, res) => {
   if (!hasEligibleEmail(req.user.email)) {
     throw new HttpError(403, `A ${STAFF_EMAIL_DOMAIN} email address is required to request a staff role`);
   }
@@ -48,24 +48,24 @@ router.post('/role-requests', (req, res) => {
   if (justification.length < 30 || justification.length > 2000) {
     throw new HttpError(400, 'Justification must be between 30 and 2000 characters');
   }
-  const role = db.prepare(`
+  const role = await db.prepare(`
     SELECT id, role_key FROM roles WHERE role_key = ? AND role_key <> 'owner'
   `).get(roleKey);
   if (!role) throw new HttpError(400, 'Select an available staff role');
-  if (db.prepare('SELECT 1 FROM user_roles WHERE user_id = ? AND role_id = ?').get(req.user.id, role.id)) {
+  if (await db.prepare('SELECT 1 FROM user_roles WHERE user_id = ? AND role_id = ?').get(req.user.id, role.id)) {
     throw new HttpError(409, 'You already have this staff role');
   }
-  if (db.prepare(`
+  if (await db.prepare(`
     SELECT 1 FROM staff_role_requests WHERE user_id = ? AND role_id = ? AND status = 'pending'
   `).get(req.user.id, role.id)) {
     throw new HttpError(409, 'A request for this role is already pending');
   }
 
-  const result = db.prepare(`
+  const result = await db.prepare(`
     INSERT INTO staff_role_requests (user_id, role_id, justification)
     VALUES (?, ?, ?)
   `).run(req.user.id, role.id, justification);
-  audit({
+  await audit({
     actorId: req.user.id,
     action: 'staff.role_request_created',
     entity: 'staff_role_request',

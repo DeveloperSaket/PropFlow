@@ -18,8 +18,7 @@ export function errorHandler(err, _req, res, _next) {
   if (err && err.status && err.status >= 400 && err.status < 500) {
     return res.status(err.status).json({ error: err.message || 'Bad request' });
   }
-  // SQLite constraint errors -> 409
-  if (err && typeof err.message === 'string' && err.message.includes('UNIQUE constraint')) {
+  if (err?.code === '23505') {
     return res.status(409).json({ error: 'Resource already exists' });
   }
   console.error('[error]', err);
