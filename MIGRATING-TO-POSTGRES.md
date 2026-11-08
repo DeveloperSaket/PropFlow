@@ -1,350 +1,152 @@
-# Migrating PropFlow from SQLite to PostgreSQL
+# PropFlow PostgreSQL setup and SQLite import
 
-## Executive summary
+PropFlow's backend now uses PostgreSQL through `pg`. Ordered schema migrations
+run at startup and through `npm run migrate`. The one-time SQLite tools are
+separate: `npm run backup:sqlite` creates a consistent backup, and
+`npm run migrate:sqlite` imports that backup into an empty PostgreSQL database.
+The SQLite source is read-only during both operations.
 
-PropFlow currently stores its application data in a local SQLite file. The
-backend opens it using Node.js's built-in `node:sqlite`; the React frontend
-communicates with the Express API and does not connect to the database.
+The Compose file starts PostgreSQL 16 with a persistent named volume and
+publishes its port to loopback only. The database is not intended to be exposed
+to the public internet. Property images and KYC documents remain in
+`backend/uploads/`; importing SQL does not copy those files.
 
-PostgreSQL is a reasonable next step if PropFlow needs multiple backend
-instances, more concurrent writes, managed backups, or a stronger production
-database service. It is not a drop-in replacement: the backend uses SQLite's
-synchronous API and some SQLite-specific SQL. A migration therefore changes
-the backend's database layer and route behavior as well as the database
-itself. The frontend and API contract can generally stay the same.
+## Local self-hosted PostgreSQL
 
-**You do not have to install PostgreSQL on the application server.** With a
-managed PostgreSQL service, the provider operates the database and PropFlow
-connects to it over a private or TLS-protected network connection. If you
-self-host PostgreSQL, then PostgreSQL server software must be installed and
-operated somewhere, either on a separate server or alongside the application.
-The Node.js PostgreSQL client library is still needed by the backend in either
-case.
+From the repository root in PowerShell:
 
-## How PropFlow works today
+1. Copy `.env.example` to `.env`. Set unique random values for
+   `POSTGRES_PASSWORD` (database administrator) and `POSTGRES_APP_PASSWORD`
+   (application role). Keep this file private; it is ignored by Git.
+2. Copy `backend/.env.example` to `backend/.env`. Set `DATABASE_URL` to use
+   `POSTGRES_APP_USER`, `POSTGRES_APP_PASSWORD` (URL-encoded), and the same
+   database. Set a unique `JWT_SECRET`. Keep this file private as well.
+3. Start the database and wait for its health check:
 
-1. The browser sends API requests to the Express backend.
-2. Express route handlers query the SQLite database synchronously through
-   `db.prepare(...).get()`, `.all()`, and `.run()`.
-3. SQLite data is stored in `backend/data/propflow.db` by default, configurable
-   with `DB_PATH`. SQLite creates supporting WAL files while the database is
-   in use.
-4. Property images and KYC documents are written to local directories under
-   `backend/uploads/`. The database stores property image URLs and KYC file
-   paths, not the file contents.
-5. Firebase chat/authentication is a separate service. It is not the PropFlow
-   SQL database.
+   ```powershell
+   docker compose up -d postgres
+   docker compose ps
+   ```
 
-The current schema has these tables:
+4. Apply the schema and start the application:
 
-| Table | Purpose |
-|---|---|
-| `users` | Member/admin accounts, password hashes, role, KYC and account flags |
-| `properties` | Property listings, price, location, status and seller relation |
-| `property_images` | Image URLs associated with a property |
-| `interests` | Buyer interest and lead status |
-| `appointments` | Requested property viewings |
-| `compliance_docs` | KYC document metadata and local file paths |
-| `audit_logs` | Audit events and metadata |
-| `staff_profiles` | Optional staff-only profile fields tied to `users.id` |
-| `roles` | Predefined staff role catalog |
-| `permissions` | Staff API capability catalog |
-| `role_permissions` | Role-to-permission assignments |
-| `user_roles` | Staff users' assigned roles |
-| `staff_role_requests` | User-submitted role requests and owner decisions |
+   ```powershell
+   Set-Location backend
+   npm install
+   npm run migrate
+   # For local development only; never run this against production:
+   npm run seed
+   npm run dev
+   ```
 
-Foreign keys, unique constraints, check constraints and indexes are defined in
-`backend/src/db.js`. That file also performs in-place SQLite schema upgrades
-and data normalization. It must not be used as the PostgreSQL schema setup;
-PostgreSQL needs its own schema and versioned migrations.
+The API health endpoint at `http://localhost:5112/api/health` checks its
+PostgreSQL connection. In production, set `NODE_ENV=production`,
+`DATABASE_URL`, `JWT_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD`. The first
+admin is created once if no admin exists; production startup fails rather than using development defaults when bootstrap
+credentials are missing or still equal the documented demo values. Do not
+run the demo seed in production.
 
-## What changes and what stays the same
+For a remote self-hosted PostgreSQL server, use a dedicated database and
+least-privilege application role, allow inbound connections only from the
+backend host, enable TLS, and set `DATABASE_SSL=true`. The Compose init script
+creates a separate app login with connect/schema privileges; it runs only when
+initializing a fresh data volume. The application pool defaults to 10
+connections; tune `DATABASE_POOL_SIZE` to the server's connection limit and
+number of backend instances.
 
-### Changes required in the backend
+## Back up PostgreSQL
 
-- Replace `node:sqlite` and its synchronous `DatabaseSync` connection with a
-  PostgreSQL driver. A common minimal choice is the `pg` package (node-postgres)
-  and a connection pool.
-- Convert all database-dependent Express handlers and helper functions to
-  asynchronous operations and ensure database errors reach the existing
-  Express error handling path.
-- Convert all query parameters and SQL that rely on SQLite conventions.
-- Create and apply PostgreSQL schema migrations at deployment/startup through
-  an explicit migration step, rather than running SQLite `PRAGMA`,
-  `sqlite_master` checks, or ad hoc `ALTER TABLE` logic.
-- Configure and validate a PostgreSQL connection, credentials, TLS settings,
-  pool limits, and database health at startup.
-- Update bootstrap and seed scripts to use the PostgreSQL connection and
-  PostgreSQL-compatible SQL. Demo seeding should remain a deliberate
-  development operation; do not seed production data automatically.
-- Add integration tests for database migrations and core data flows.
+Take regular encrypted backups and store a copy away from the database host.
+For the local Compose service, create a custom-format dump (replace `propflow`
+with `POSTGRES_USER` and `POSTGRES_DB` if changed):
 
-The route modules, authentication rules, API response shapes, and frontend
-should not need a redesign. However, the routes currently use both `?`
-placeholders and SQLite named placeholders such as `@seller_id`. With `pg`,
-use positional parameters such as `$1`, `$2`, etc. and pass values separately
-to the query method.
+```powershell
+New-Item -ItemType Directory -Force .\backups | Out-Null
+cmd /c "docker compose exec -T postgres pg_dump -U propflow_admin -d propflow -Fc > backups\propflow.dump"
+```
 
-### Things that can remain outside this migration
+Test a restore into a separate empty database before relying on a backup. A
+named Docker volume protects against container replacement, not disk failure,
+operator error, ransomware, or host loss. Do not delete the volume as a way to
+reset the app; that destroys the database.
 
-- React/Vite does not need a PostgreSQL driver or direct database credentials.
-- Firebase chat/auth remains separate.
-- Property image and KYC file contents do not move into PostgreSQL. They need
-  their own persistent storage plan.
-- Password hashes can be copied without re-hashing, provided their values and
-  user IDs are preserved.
+## Import the existing SQLite database
 
-## PostgreSQL mapping considerations
+The importer requires a **consistent, verified SQLite backup** and a clean
+PostgreSQL application database. For production, first stop application
+writes and take a final backup during a planned maintenance window. Rehearse
+the process against a disposable PostgreSQL database before the production
+cutover.
 
-Treat these as schema design decisions to review and test, not as a blind
-search-and-replace:
+Create a SQLite backup from the backend directory. Set the source to the
+existing database; the tool writes a new file and does not checkpoint or
+overwrite the source:
 
-| SQLite pattern in PropFlow | PostgreSQL approach |
-|---|---|
-| `INTEGER PRIMARY KEY AUTOINCREMENT` | `BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY` (or `GENERATED ALWAYS`, with an explicit override for imports) |
-| Integer foreign-key columns | Use the same `BIGINT` type as the referenced identity |
-| `REAL` for `price` and `area_sqft` | Prefer an appropriate `NUMERIC` precision. Currency represented as floating point can introduce rounding differences; confirm scale and range before choosing precision. |
-| `INTEGER` flags such as `is_agent`, `active`, `featured` | `BOOLEAN`; convert existing `0`/`1` values explicitly |
-| `TEXT DEFAULT (datetime('now'))` | `TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP`; validate and convert existing timestamp strings |
-| SQLite `CHECK`, `UNIQUE`, and foreign keys | Recreate as PostgreSQL constraints; verify existing data satisfies them before import |
-| SQLite `ON CONFLICT` | PostgreSQL supports `ON CONFLICT`, but SQLite-specific `INSERT OR IGNORE` should be rewritten, commonly as `ON CONFLICT (...) DO NOTHING` |
-| `lastInsertRowid` from `.run()` | Use `INSERT ... RETURNING id` and read the returned row |
-| `sqlite_master`, `PRAGMA`, `GLOB`, `datetime()` | Replace with migrations and PostgreSQL-appropriate SQL; these constructs are not portable as currently used |
-| SQLite named placeholders such as `@name` | Use PostgreSQL `$1` placeholders and a corresponding parameter array |
+```powershell
+Set-Location backend
+$env:SQLITE_SOURCE = (Resolve-Path .\data\propflow.db).Path
+$env:SQLITE_BACKUP = (Join-Path $PWD 'data\propflow-migration-backup.db')
+npm run backup:sqlite
+```
 
-PostgreSQL and SQLite also differ in text matching. For example, PropFlow's
-search uses `LIKE`; SQLite's default case behavior is not the same as
-PostgreSQL's. Decide whether search should be case-sensitive, use PostgreSQL
-`ILIKE`, or use a more deliberate search/indexing strategy, then test the
-existing browse filters. Do not interpolate user-provided values into SQL;
-continue using bound parameters.
+Review the backup path and preserve a separate copy before proceeding. Point
+the importer to that backup and run it against the configured PostgreSQL
+database:
 
-### Asynchronous code and transactions
+```powershell
+$env:SQLITE_SOURCE = $env:SQLITE_BACKUP
+npm run migrate:sqlite
+```
 
-The current SQLite API blocks while each query runs. PostgreSQL calls through
-`pg` are asynchronous. Handlers that read data, write data, or call database
-helpers must await the relevant operations, and errors must be propagated to
-the project's error middleware. In particular, review all routes, audit
-logging, admin bootstrap, and seed logic rather than changing only `db.js`.
+The importer refuses to load into a PostgreSQL database that already contains
+application records. It applies the schema, copies the records in dependency
+order, preserves IDs/password hashes/role assignments, resets identity
+sequences, restores missing Owner assignments for admin accounts, and checks
+table row counts. If validation fails, stop and investigate; do not start the
+application on an unverified result. The importer may remove the catalog roles
+and permissions from a *clean* target before restoring the SQLite catalog.
 
-For multi-step changes that must succeed or fail together, use a PostgreSQL
-transaction on one checked-out connection from the pool (`BEGIN`, all related
-queries, then `COMMIT`; on failure, `ROLLBACK`). Do not issue transaction
-statements through unrelated pool queries: a transaction belongs to one
-connection. Identify operations such as creating a listing and its images, or
-submitting KYC metadata while changing the user's KYC status, and decide which
-must be atomic.
+Before going live:
 
-## Recommended implementation sequence
+- Compare source and target row counts plus representative values, account
+  IDs, password hashes, role grants, timestamps, prices and foreign-key links.
+- Confirm login, password change, permissions, listings, interests, viewings,
+  KYC review, and audit history against the PostgreSQL copy.
+- Copy `backend/uploads/properties/` and `backend/uploads/kyc/` to the new
+  deployment while preserving the stored paths. KYC documents are private and
+  must not be served as public static files.
+- Keep the SQLite backup and original upload files until the new deployment
+  and restore process have been accepted. Do not switch production traffic to
+  PostgreSQL while the application can still write to SQLite.
 
-### 1. Confirm the need and choose hosting
+## Schema and compatibility notes
 
-Record why PostgreSQL is needed (concurrent writes, multiple API instances,
-recovery requirements, operational policy, or expected growth). Estimate
-database size and workload, then choose managed PostgreSQL or self-hosting.
-Also decide the required backup retention, recovery objective, maintenance
-window, and whether downtime during cutover is acceptable.
+- Migrations are in `backend/src/migrations/`; add a new numbered migration
+  for future schema changes rather than editing one already applied.
+- `BIGSERIAL` IDs preserve the existing integer identity and allow explicit
+  ID import. `pg` returns 64-bit IDs and counts as JavaScript numbers; keep
+  identifiers within JavaScript's safe integer range.
+- Property prices and areas use `DOUBLE PRECISION` to preserve the existing
+  SQLite `REAL` representation. Monetary arithmetic that requires exact
+  decimal rounding should be migrated separately to a defined `NUMERIC`
+  scale with API compatibility tests.
+- Integer flags remain constrained to `0`/`1` to preserve existing API
+  behavior. PostgreSQL timestamps are stored as `TIMESTAMPTZ`; the connection
+  timezone is UTC, matching SQLite's `datetime('now')` convention.
+- Search uses PostgreSQL `ILIKE` to retain SQLite's case-insensitive
+  `LIKE` behavior for ordinary ASCII text.
+- PostgreSQL DDL and migrations do not migrate or store uploaded file contents.
+  Keep the database and upload backups coordinated.
 
-For a small deployment without material SQLite limitations, keeping SQLite
-with reliable persistent storage and backups may be the simplest choice.
-Moving to PostgreSQL adds operational and code complexity; it is not
-automatically faster or cheaper for every workload.
+## Restore example
 
-### 2. Establish the PostgreSQL environment
+Only restore into an explicitly selected empty database after verifying the
+dump. For a local Compose test restore, create a separate database and restore
+there (the app role is created by the Compose initialization script):
 
-Create a development/staging database first, not production. Set up a
-dedicated application database and least-privilege application role; keep
-schema-owner/migration privileges separate where practical. Restrict network
-access to the backend, require TLS when connecting over an untrusted network,
-and keep credentials in the hosting platform's secret manager or environment
-configuration. Never commit the connection string.
+```powershell
+docker compose exec postgres createdb -U propflow_admin propflow_restore
+cmd /c "docker compose exec -T postgres pg_restore -U propflow_admin -d propflow_restore --no-owner < backups\propflow.dump"
+```
 
-Choose a supported PostgreSQL version and confirm how the provider handles
-backups, point-in-time recovery, upgrades, connection limits, maintenance,
-and TLS certificate validation. Make the backend connection pool size fit the
-database connection limit and the number of application instances.
-
-### 3. Add a PostgreSQL schema and migrations
-
-Create ordered, repeatable migration files (for example, with a migration
-tool compatible with `pg`, or a small project-owned migration runner). The
-initial migration should create all application and staff tables, constraints
-and indexes listed above. Seed the stable roles and permissions through a
-repeatable migration/seed step, preserve existing user IDs, and map existing
-admin accounts to the Owner role only after reviewing the intended production
-access. Later schema changes should be new migrations, not edits to an
-already-applied migration.
-
-Review the current SQLite schema and the existing schema-upgrade code for
-legacy data transformations, including legacy user roles and property
-categories. Preserve needed normalization in explicit, tested migrations.
-Verify that foreign keys point to matching data types and that the chosen
-numeric, timestamp and boolean representations fit existing values.
-
-### 4. Replace the database access layer and update callers
-
-Add a database module that owns the `pg` pool and provides a clear query
-interface. Update every database caller, not just the route files:
-
-- all API routes and any shared query/hydration helpers
-- authentication/bootstrap and audit logging
-- seed tooling
-- startup and health checks
-
-Convert dynamic SQL to PostgreSQL placeholders safely. Use `RETURNING` where
-the code needs newly inserted IDs. Replace SQLite-only migration checks and
-utilities. Keep HTTP endpoints and response JSON stable so that the frontend
-does not need to change.
-
-### 5. Test against a real PostgreSQL instance
-
-Run the schema migrations and the automated tests against PostgreSQL, not
-just SQLite or mocks. At minimum verify registration/login, password
-verification, admin bootstrap, listing create/edit/search/approval, image
-associations, interests, appointments, KYC submission/review, audit entries,
-pagination, and conflict/duplicate handling.
-
-Test concurrent requests and connection-pool behavior. Compare search results,
-sorting, case matching, date/time handling, and monetary values to expected
-behavior. Exercise failure paths to check that transactions roll back and
-database errors produce appropriate API errors rather than hanging requests.
-
-### 6. Migrate the existing data
-
-Take a verified SQLite backup before attempting an import. Inventory the
-tables, row counts, nulls, duplicate/invalid values, IDs, timestamp formats,
-and referenced upload files. Run an initial import into a disposable
-PostgreSQL database, then check:
-
-- row counts and key values for each table
-- foreign-key and unique-constraint validity
-- account IDs, roles, password hashes, and status values
-- prices/areas and timestamp timezone interpretation
-- property image URLs and KYC file paths
-- maximum IDs and PostgreSQL identity sequences
-
-Import parent tables before dependent tables (for example, users before
-properties; properties and users before interests/appointments). Preserve
-primary-key IDs because IDs are referenced across tables and are also used as
-the user's JWT subject and Firebase UID. After inserting explicit IDs, advance
-each identity sequence to at least the table's maximum ID so the next insert
-does not collide.
-
-Use an explicit migration/import script or a carefully validated data-transfer
-tool. Do not copy the SQLite database file to a PostgreSQL server: the file
-format is not compatible. Do not use the development seed command as a
-production migration.
-
-### 7. Plan uploads separately
-
-The database contains references to locally stored files; moving only the
-database will leave those references pointing at missing files. Before
-cutover, either copy `backend/uploads/properties/` and
-`backend/uploads/kyc/` to durable storage and preserve paths, or move them to
-object storage and update the application to use durable object keys/URLs.
-Test file access and permissions from the deployed backend.
-
-This is especially important if the application runs in containers or on
-ephemeral hosting: a local disk may disappear on restart or may not be shared
-between backend instances. KYC files are sensitive; do not make them publicly
-accessible as part of this migration. Keep their access controlled and review
-the existing production note about protecting KYC uploads.
-
-### 8. Cut over and keep a rollback path
-
-1. Deploy the PostgreSQL-capable backend and schema to staging; rehearse the
-   data and upload migration.
-2. Schedule a production maintenance window. Stop or disable writes to the
-   SQLite-backed application before the final export so no late changes are
-   lost.
-3. Take a final SQLite backup and export; import into PostgreSQL; validate
-   counts, relationships, sequences, logins, and uploaded files.
-4. Set the production PostgreSQL connection secret and TLS options, deploy the
-   backend, and run migrations as a controlled deployment step.
-5. Run smoke tests and monitor database connections, application errors,
-   latency, and write behavior. Keep the old SQLite backup and deployment
-   available until the new system is accepted.
-6. If rollback is needed after PostgreSQL has accepted writes, do not simply
-   switch back to the old SQLite file: those writes would be missing. Either
-   stop writes and reconcile/re-export the new data, or define the rollback
-   and data-recovery procedure before cutover.
-
-For a low-downtime migration, a one-time export/import is not enough if users
-continue writing to SQLite during transfer. Plan a controlled write freeze or
-an explicit change-data-capture/dual-write strategy; the latter adds
-significant complexity and should not be improvised.
-
-## Do I need to install additional software on the server?
-
-| Deployment choice | What runs on the database host? | What the PropFlow application host needs |
-|---|---|---|
-| **Managed PostgreSQL (recommended for most small teams)** | The provider operates PostgreSQL; no PostgreSQL server installation by you | Node.js application, the PostgreSQL client dependency, connection settings/secrets, and network access to the database |
-| **Self-hosted on a separate server/VM** | PostgreSQL server plus ongoing OS/database maintenance, storage, firewall, backups, upgrades and monitoring | Node.js application and PostgreSQL client dependency; connectivity to the database host |
-| **Self-hosted on the same server as the backend** | PostgreSQL server installed on that server | Both PostgreSQL server and the Node.js client; ensure persistent disk, resource limits, access controls and independent backups |
-| **Containerized PostgreSQL** | A PostgreSQL container runtime/orchestrator and a persistent volume | Backend container plus network configuration; the database volume and backups must outlive containers |
-
-The backend needs a PostgreSQL *client library* such as `pg`; it does not need
-the PostgreSQL server binaries merely to connect to a remote managed database.
-Command-line tools such as `psql` and desktop tools such as pgAdmin are useful
-for administrators but are not required for the running application.
-
-## Advantages and disadvantages
-
-### Advantages
-
-- Better support for concurrent transactions and multiple API instances than
-  a single local SQLite file.
-- Strong relational constraints, rich indexing and query-planning options as
-  the data and query complexity grow.
-- Managed hosting can provide automated backups, monitoring, failover and
-  point-in-time recovery without operating the database server yourself.
-- Central database access makes horizontal scaling of the backend more
-  practical, provided uploads also use shared/durable storage.
-- PostgreSQL has a mature ecosystem and is a common fit for production
-  relational applications.
-
-### Disadvantages and costs
-
-- The migration requires substantial backend changes because PropFlow's
-  current database API is synchronous and tied to SQLite.
-- Additional hosting cost may apply, especially for a managed database,
-  storage, backups, and network transfer.
-- A remote database introduces network latency and a dependency on database
-  availability and connectivity.
-- PostgreSQL needs operational planning: credentials, access controls,
-  connection limits, upgrades, backups, restores, monitoring and incident
-  recovery. Managed service reduces but does not remove this work.
-- SQL behavior and data types differ, so careless conversion can change search
-  results, timestamp meaning, boolean values, or currency precision.
-- PostgreSQL will not solve local upload persistence or privacy on its own.
-- During migration, running both databases or maintaining rollback capability
-  increases complexity.
-
-## Recommendation for this project
-
-If PropFlow is moving to a production deployment with multiple backend
-instances, material concurrent writes, or managed recovery requirements, use
-a **managed PostgreSQL service** first. Keep the API as the only database
-client, retain the existing IDs, move uploads to durable storage, and make the
-cutover after a tested staging import.
-
-If the current deployment is a single small instance and SQLite is meeting
-reliability and concurrency needs, PostgreSQL can be deferred. First ensure
-the SQLite file is on persistent storage, is backed up consistently, and is
-not being accessed by multiple independent application hosts. Make the
-migration when a specific operational or scale need justifies the added
-complexity.
-
-## Completion checklist
-
-- [ ] PostgreSQL host/version, backup policy, recovery goals and access model selected
-- [ ] Application and migration credentials stored outside source control
-- [ ] PostgreSQL schema, indexes, constraints and versioned migrations reviewed
-- [ ] All SQLite API callers converted to asynchronous PostgreSQL queries
-- [ ] SQLite-specific SQL and data conversion cases addressed
-- [ ] Automated and integration tests pass against PostgreSQL
-- [ ] Database import preserves IDs and resets identity sequences
-- [ ] Property and KYC uploads have durable storage and validated references
-- [ ] Staging migration and production cutover rehearsed
-- [ ] Rollback plan accounts for writes made after cutover
-- [ ] Monitoring, restore procedure and production smoke tests verified
+Never restore test backups over the only production database.

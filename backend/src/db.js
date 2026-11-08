@@ -1,344 +1,184 @@
-import { DatabaseSync } from 'node:sqlite';
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import pg from 'pg';
 import { config } from './config.js';
-// Ensure data + upload directories exist
-fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
-fs.mkdirSync(config.uploadDir, { recursive: true });
-fs.mkdirSync(config.propertyUploadDir, { recursive: true });
-fs.mkdirSync(config.kycUploadDir, { recursive: true });
-export const db = new DatabaseSync(config.dbPath);
-// Pragmas for reliability / concurrency
-db.exec('PRAGMA journal_mode = WAL;');
-db.exec('PRAGMA foreign_keys = ON;');
-export function initSchema() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      role          TEXT NOT NULL CHECK (role IN ('member','admin')),
-      name          TEXT NOT NULL,
-      email         TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      token_version INTEGER NOT NULL DEFAULT 0,
-      phone         TEXT,
-      is_agent      INTEGER NOT NULL DEFAULT 0 CHECK (is_agent IN (0, 1)),
-      kyc_status    TEXT NOT NULL DEFAULT 'unverified'
-                      CHECK (kyc_status IN ('unverified','pending','verified','rejected')),
-      terms_accepted_at TEXT,
-      active        INTEGER NOT NULL DEFAULT 1,
-      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS properties (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      seller_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      title         TEXT NOT NULL,
-      description   TEXT,
-      property_type TEXT NOT NULL CHECK (property_type IN ('detached','semi_detached','freehold_townhouse','condo_townhouse','condo_apt','link','vacant_land','other','apartment','house','plot','commercial','villa')),
-      listing_type  TEXT NOT NULL CHECK (listing_type IN ('sale','rent')),
-      price         REAL NOT NULL,
-      area_sqft     REAL,
-      bedrooms      INTEGER,
-      bathrooms     INTEGER,
-      address       TEXT,
-      city          TEXT,
-      state         TEXT,
-      country       TEXT DEFAULT 'Canada',
-      pincode       TEXT,
-      status        TEXT NOT NULL DEFAULT 'pending'
-                      CHECK (status IN ('draft','pending','approved','rejected','sold')),
-      rejection_reason TEXT,
-      featured      INTEGER NOT NULL DEFAULT 0,
-      views         INTEGER NOT NULL DEFAULT 0,
-      created_at    TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS property_images (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      property_id INTEGER NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-      url         TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS interests (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      property_id INTEGER NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-      buyer_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      message     TEXT,
-      status      TEXT NOT NULL DEFAULT 'new'
-                    CHECK (status IN ('new','contacted','negotiating','closed','withdrawn')),
-      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-      UNIQUE (property_id, buyer_id)
-    );
-    CREATE TABLE IF NOT EXISTS appointments (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      property_id  INTEGER NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-      buyer_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      seller_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      scheduled_at TEXT NOT NULL,
-      status       TEXT NOT NULL DEFAULT 'requested'
-                     CHECK (status IN ('requested','confirmed','completed','cancelled')),
-      notes        TEXT,
-      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS compliance_docs (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      doc_type    TEXT NOT NULL,
-      file_path   TEXT NOT NULL,
-      status      TEXT NOT NULL DEFAULT 'pending'
-                    CHECK (status IN ('pending','verified','rejected')),
-      reviewed_by INTEGER REFERENCES users(id),
-      note        TEXT,
-      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS audit_logs (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      actor_id   INTEGER REFERENCES users(id),
-      action     TEXT NOT NULL,
-      entity     TEXT,
-      entity_id  INTEGER,
-      meta       TEXT,
-      ip         TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE INDEX IF NOT EXISTS idx_properties_status ON properties(status);
-    CREATE INDEX IF NOT EXISTS idx_properties_seller ON properties(seller_id);
-    CREATE INDEX IF NOT EXISTS idx_properties_city ON properties(city);
-    CREATE INDEX IF NOT EXISTS idx_interests_buyer ON interests(buyer_id);
-    CREATE INDEX IF NOT EXISTS idx_interests_property ON interests(property_id);
-    CREATE INDEX IF NOT EXISTS idx_appointments_buyer ON appointments(buyer_id);
-    CREATE INDEX IF NOT EXISTS idx_appointments_seller ON appointments(seller_id);
-    CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_logs(actor_id);
-  `);
 
-  const userColumns = db.prepare('PRAGMA table_info(users)').all();
-  if (!userColumns.some((column) => column.name === 'is_agent')) {
-    db.exec('ALTER TABLE users ADD COLUMN is_agent INTEGER NOT NULL DEFAULT 0 CHECK (is_agent IN (0, 1))');
+await Promise.all([
+  config.uploadDir,
+  config.propertyUploadDir,
+  config.kycUploadDir,
+].map((directory) => fs.mkdir(directory, { recursive: true })));
+
+const { Pool, types } = pg;
+types.setTypeParser(20, (value) => Number(value));
+types.setTypeParser(1700, (value) => Number(value));
+
+export const pool = new Pool({
+  connectionString: config.databaseUrl,
+  max: config.databasePoolSize,
+  options: '-c timezone=UTC',
+  ssl: config.databaseSsl ? { rejectUnauthorized: true } : undefined,
+});
+if (!config.databaseUrl) {
+  throw new Error('DATABASE_URL is required. Configure a PostgreSQL connection before starting PropFlow.');
+}
+
+function prepareQuery(sql, input) {
+  const ignoreConflicts = /\bINSERT\s+OR\s+IGNORE\s+INTO\b/i.test(sql);
+  const values = [];
+  if (input.length === 1 && input[0] && typeof input[0] === 'object' && !Array.isArray(input[0])) {
+    sql = sql.replace(/@([a-zA-Z_]\w*)/g, (_match, key) => {
+      values.push(input[0][key]);
+      return `$${values.length}`;
+    });
+  } else {
+    let index = 0;
+    sql = sql.replace(/\?/g, () => {
+      values.push(input[index++]);
+      return `$${values.length}`;
+    });
   }
-  if (!userColumns.some((column) => column.name === 'token_version')) {
-    db.exec('ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0');
+  sql = sql
+    .replace(/\bINSERT\s+OR\s+IGNORE\s+INTO\b/gi, 'INSERT INTO')
+    .replace(/datetime\('now'\)/gi, 'CURRENT_TIMESTAMP');
+  if (ignoreConflicts && !/\bON\s+CONFLICT\b/i.test(sql)) {
+    sql = sql.replace(/;\s*$/, '') + ' ON CONFLICT DO NOTHING';
   }
-
-  const userTable = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get();
-  if (!userTable.sql.includes("'member'") || userTable.sql.includes("'buyer'") || userTable.sql.includes("'seller'")) {
-    db.exec('PRAGMA foreign_keys = OFF');
-    try {
-      db.exec(`
-        BEGIN;
-        CREATE TABLE users_new (
-          id            INTEGER PRIMARY KEY AUTOINCREMENT,
-          role          TEXT NOT NULL CHECK (role IN ('member','admin')),
-          name          TEXT NOT NULL,
-          email         TEXT NOT NULL UNIQUE,
-          password_hash TEXT NOT NULL,
-          token_version INTEGER NOT NULL DEFAULT 0,
-          phone         TEXT,
-          is_agent      INTEGER NOT NULL DEFAULT 0 CHECK (is_agent IN (0, 1)),
-          kyc_status    TEXT NOT NULL DEFAULT 'unverified'
-                          CHECK (kyc_status IN ('unverified','pending','verified','rejected')),
-          terms_accepted_at TEXT,
-          active        INTEGER NOT NULL DEFAULT 1,
-          created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-        INSERT INTO users_new
-          SELECT id, CASE WHEN role IN ('buyer','seller') THEN 'member' ELSE role END,
-                 name, email, password_hash, token_version, phone, is_agent, kyc_status,
-                 terms_accepted_at, active, created_at
-          FROM users;
-        DROP TABLE users;
-        ALTER TABLE users_new RENAME TO users;
-        COMMIT;
-      `);
-    } catch (error) {
-      db.exec('ROLLBACK');
-      throw error;
-    } finally {
-      db.exec('PRAGMA foreign_keys = ON');
-    }
+  const insertTable = sql.match(/^\s*INSERT\s+INTO\s+([a-z_]+)/i)?.[1]?.toLowerCase();
+  const idTables = new Set([
+    'users', 'properties', 'property_images', 'interests', 'appointments',
+    'compliance_docs', 'audit_logs', 'roles', 'permissions', 'staff_role_requests',
+  ]);
+  if (idTables.has(insertTable) && !/\bRETURNING\b/i.test(sql)) {
+    sql += ' RETURNING id';
   }
+  return { sql, values };
+}
 
-  const propertyTable = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'properties'").get();
-  if (!propertyTable.sql.includes("'detached'") || propertyTable.sql.includes("DEFAULT 'India'")) {
-    db.exec('PRAGMA foreign_keys = OFF');
-    try {
-      db.exec(`
-        BEGIN;
-        CREATE TABLE properties_new (
-          id            INTEGER PRIMARY KEY AUTOINCREMENT,
-          seller_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          title         TEXT NOT NULL,
-          description   TEXT,
-          property_type TEXT NOT NULL CHECK (property_type IN ('detached','semi_detached','freehold_townhouse','condo_townhouse','condo_apt','link','vacant_land','other','apartment','house','plot','commercial','villa')),
-          listing_type  TEXT NOT NULL CHECK (listing_type IN ('sale','rent')),
-          price         REAL NOT NULL,
-          area_sqft     REAL,
-          bedrooms      INTEGER,
-          bathrooms     INTEGER,
-          address       TEXT,
-          city          TEXT,
-          state         TEXT,
-          country       TEXT DEFAULT 'Canada',
-          pincode       TEXT,
-          status        TEXT NOT NULL DEFAULT 'pending'
-                          CHECK (status IN ('draft','pending','approved','rejected','sold')),
-          rejection_reason TEXT,
-          featured      INTEGER NOT NULL DEFAULT 0,
-          views         INTEGER NOT NULL DEFAULT 0,
-          created_at    TEXT NOT NULL DEFAULT (datetime('now')),
-          updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-        INSERT INTO properties_new SELECT * FROM properties;
-        DROP TABLE properties;
-        ALTER TABLE properties_new RENAME TO properties;
-        CREATE INDEX IF NOT EXISTS idx_properties_status ON properties(status);
-        CREATE INDEX IF NOT EXISTS idx_properties_seller ON properties(seller_id);
-        CREATE INDEX IF NOT EXISTS idx_properties_city ON properties(city);
-        COMMIT;
-      `);
-    } catch (error) {
-      db.exec('ROLLBACK');
-      throw error;
-    } finally {
-      db.exec('PRAGMA foreign_keys = ON');
-    }
-  }
-
-  for (const [prefix, destination] of [
-    ['property_', config.propertyUploadDir],
-    ['kyc_', config.kycUploadDir],
-  ]) {
-    for (const entry of fs.readdirSync(config.uploadDir, { withFileTypes: true })) {
-      if (!entry.isFile() || !entry.name.startsWith(prefix)) continue;
-      fs.renameSync(
-        path.join(config.uploadDir, entry.name),
-        path.join(destination, entry.name)
-      );
-    }
-  }
-  db.prepare(`
-    UPDATE property_images
-    SET url = '/uploads/properties/' || substr(url, 10)
-    WHERE url GLOB '/uploads/property_*'
-  `).run();
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS staff_profiles (
-      user_id             INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE RESTRICT,
-      job_title           TEXT,
-      team                TEXT,
-      manager_user_id     INTEGER REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
-      employment_status   TEXT NOT NULL DEFAULT 'active'
-                            CHECK (employment_status IN ('active', 'on_leave', 'departed')),
-      created_at          TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS roles (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      role_key      TEXT NOT NULL UNIQUE,
-      name          TEXT NOT NULL,
-      description   TEXT,
-      is_system_role INTEGER NOT NULL DEFAULT 1 CHECK (is_system_role IN (0, 1))
-    );
-    CREATE TABLE IF NOT EXISTS permissions (
-      id              INTEGER PRIMARY KEY AUTOINCREMENT,
-      permission_key  TEXT NOT NULL UNIQUE,
-      description     TEXT
-    );
-    CREATE TABLE IF NOT EXISTS role_permissions (
-      role_id       INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-      permission_id INTEGER NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
-      PRIMARY KEY (role_id, permission_id)
-    );
-    CREATE TABLE IF NOT EXISTS user_roles (
-      user_id     INTEGER NOT NULL REFERENCES staff_profiles(user_id) ON DELETE CASCADE,
-      role_id     INTEGER NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
-      granted_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      granted_at  TEXT NOT NULL DEFAULT (datetime('now')),
-      PRIMARY KEY (user_id, role_id)
-    );
-    CREATE TABLE IF NOT EXISTS staff_role_requests (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      role_id       INTEGER NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
-      justification TEXT NOT NULL,
-      status        TEXT NOT NULL DEFAULT 'pending'
-                      CHECK (status IN ('pending', 'approved', 'rejected')),
-      reviewed_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      reviewed_at   TEXT,
-      review_note   TEXT,
-      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS app_migrations (
-      migration_key TEXT PRIMARY KEY,
-      applied_at    TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_staff_role_requests_pending
-      ON staff_role_requests(user_id, role_id) WHERE status = 'pending';
-    CREATE INDEX IF NOT EXISTS idx_staff_role_requests_status
-      ON staff_role_requests(status, created_at);
-    CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role_id);
-  `);
-
-  const permissions = [
-    ['dashboard.read', 'View staff dashboard metrics'],
-    ['users.read', 'View platform user accounts'],
-    ['users.manage', 'Activate and deactivate platform accounts'],
-    ['users.agent', 'Manage agent flags on platform accounts'],
-    ['kyc.review', 'Review KYC submissions'],
-    ['listings.read', 'View listings awaiting moderation'],
-    ['listings.review', 'Approve or reject listings'],
-    ['listings.feature', 'Feature listings'],
-    ['appointments.read', 'View platform appointments'],
-    ['audit.read', 'View audit records'],
-    ['staff.manage', 'Assign and revoke staff roles'],
-    ['staff.requests.review', 'Approve or reject staff role requests'],
-  ];
-  const roles = [
-    ['owner', 'Owner / Super Admin', 'Manage staff and all platform administration'],
-    ['listing_moderator', 'Listing Moderator', 'Review and feature property listings'],
-    ['compliance_reviewer', 'Compliance Reviewer', 'Review user KYC submissions'],
-    ['support_agent', 'Support Agent', 'Look up users and view appointments'],
-    ['read_only_analyst', 'Read-only Analyst', 'View dashboard metrics and audit records'],
-  ];
-  const permissionsByRole = {
-    owner: permissions.map(([key]) => key),
-    listing_moderator: ['dashboard.read', 'listings.read', 'listings.review', 'listings.feature'],
-    compliance_reviewer: ['dashboard.read', 'users.read', 'kyc.review'],
-    support_agent: ['dashboard.read', 'users.read', 'appointments.read'],
-    read_only_analyst: ['dashboard.read', 'audit.read'],
+function statement(sql) {
+  return {
+    async get(...input) {
+      const { sql: text, values } = prepareQuery(sql, input);
+      const result = await pool.query(text, values);
+      return result.rows[0];
+    },
+    async all(...input) {
+      const { sql: text, values } = prepareQuery(sql, input);
+      const result = await pool.query(text, values);
+      return result.rows;
+    },
+    async run(...input) {
+      const { sql: text, values } = prepareQuery(sql, input);
+      const result = await pool.query(text, values);
+      return { lastInsertRowid: result.rows[0]?.id, changes: result.rowCount };
+    },
   };
-  const insertPermission = db.prepare(
-    'INSERT OR IGNORE INTO permissions (permission_key, description) VALUES (?, ?)'
-  );
-  for (const [key, description] of permissions) insertPermission.run(key, description);
-  const insertRole = db.prepare(
-    'INSERT OR IGNORE INTO roles (role_key, name, description) VALUES (?, ?, ?)'
-  );
-  for (const [key, name, description] of roles) insertRole.run(key, name, description);
-  const getPermissionId = db.prepare('SELECT id FROM permissions WHERE permission_key = ?');
-  const getRoleId = db.prepare('SELECT id FROM roles WHERE role_key = ?');
-  const insertRolePermission = db.prepare(
-    'INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)'
-  );
-  for (const [roleKey, permissionKeys] of Object.entries(permissionsByRole)) {
-    const roleId = getRoleId.get(roleKey).id;
-    for (const permissionKey of permissionKeys) {
-      insertRolePermission.run(roleId, getPermissionId.get(permissionKey).id);
-    }
-  }
+}
 
-  const legacyAdminMigration = 'staff-roles-owner-backfill-v1';
-  if (!db.prepare('SELECT 1 FROM app_migrations WHERE migration_key = ?').get(legacyAdminMigration)) {
-    db.exec('BEGIN IMMEDIATE');
+export const db = { prepare: statement };
+
+export async function withTransaction(callback) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await callback({
+      query(text, values = []) {
+        return client.query(text, values);
+      },
+      prepare(sql) {
+        return {
+          async get(...input) {
+            const { sql: text, values } = prepareQuery(sql, input);
+            return (await client.query(text, values)).rows[0];
+          },
+          async all(...input) {
+            const { sql: text, values } = prepareQuery(sql, input);
+            return (await client.query(text, values)).rows;
+          },
+          async run(...input) {
+            const { sql: text, values } = prepareQuery(sql, input);
+            const queryResult = await client.query(text, values);
+            return { lastInsertRowid: queryResult.rows[0]?.id, changes: queryResult.rowCount };
+          },
+        };
+      },
+    });
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+const migrationsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
+export async function initSchema() {
+  const client = await pool.connect();
+  try {
+    await client.query('SELECT pg_advisory_lock(42042, 1)');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        migration_name TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    const files = (await fs.readdir(migrationsDir)).filter((name) => name.endsWith('.sql')).sort();
+    for (const name of files) {
+      const applied = await client.query('SELECT 1 FROM schema_migrations WHERE migration_name = $1', [name]);
+      if (applied.rowCount) continue;
+      const sql = await fs.readFile(path.join(migrationsDir, name), 'utf8');
+      await client.query('BEGIN');
+      try {
+        for (const command of sql.split(';').map((part) => part.trim()).filter(Boolean)) {
+          await client.query(command);
+        }
+        await client.query('INSERT INTO schema_migrations (migration_name) VALUES ($1)', [name]);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      }
+      console.log(`[database] applied migration ${name}`);
+    }
+    const legacyAdminMigration = 'staff-roles-owner-backfill-v1';
+    await client.query('BEGIN');
     try {
-      db.prepare("INSERT OR IGNORE INTO staff_profiles (user_id) SELECT id FROM users WHERE role = 'admin'").run();
-      db.prepare(`
-        INSERT OR IGNORE INTO user_roles (user_id, role_id)
-        SELECT id, ? FROM users WHERE role = 'admin'
-      `).run(getRoleId.get('owner').id);
-      db.prepare('INSERT INTO app_migrations (migration_key) VALUES (?)').run(legacyAdminMigration);
-      db.exec('COMMIT');
+      const applied = await client.query(
+        'SELECT 1 FROM app_migrations WHERE migration_key = $1',
+        [legacyAdminMigration]
+      );
+      if (!applied.rowCount) {
+        await client.query(`
+          INSERT INTO staff_profiles (user_id)
+          SELECT id FROM users WHERE role = 'admin'
+          ON CONFLICT DO NOTHING
+        `);
+        await client.query(`
+          INSERT INTO user_roles (user_id, role_id)
+          SELECT u.id, r.id
+          FROM users u CROSS JOIN roles r
+          WHERE u.role = 'admin' AND r.role_key = 'owner'
+          ON CONFLICT DO NOTHING
+        `);
+        await client.query(
+          'INSERT INTO app_migrations (migration_key) VALUES ($1)',
+          [legacyAdminMigration]
+        );
+      }
+      await client.query('COMMIT');
     } catch (error) {
-      db.exec('ROLLBACK');
+      await client.query('ROLLBACK');
       throw error;
     }
+  } finally {
+    await client.query('SELECT pg_advisory_unlock(42042, 1)');
+    client.release();
   }
+}
+
+export async function closeDatabase() {
+  await pool.end();
 }

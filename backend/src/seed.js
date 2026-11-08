@@ -1,8 +1,9 @@
-import { db, initSchema } from './db.js';
+import { closeDatabase, db, initSchema } from './db.js';
 import { ensureAdmin } from './bootstrap.js';
+import { config } from './config.js';
 import { hashPassword } from './utils/auth.js';
-initSchema();
-ensureAdmin();
+await initSchema();
+await ensureAdmin();
 console.log('[seed] seeding demo data...');
 const upsertUser = db.prepare(`
   INSERT INTO users (role, name, email, password_hash, phone, is_agent, kyc_status, terms_accepted_at)
@@ -10,8 +11,8 @@ const upsertUser = db.prepare(`
   ON CONFLICT(email) DO UPDATE SET role=excluded.role, name=excluded.name,
     phone=excluded.phone, is_agent=excluded.is_agent
 `);
-function user(role, name, email, phone, kyc = 'verified', isAgent = false) {
-  upsertUser.run({
+async function user(role, name, email, phone, kyc = 'verified', isAgent = false) {
+  await upsertUser.run({
     role, name, email, phone,
     password_hash: hashPassword('Password@123'),
     kyc_status: kyc,
@@ -19,10 +20,10 @@ function user(role, name, email, phone, kyc = 'verified', isAgent = false) {
   });
   return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
 }
-const seller1 = user('member', 'Maple Key Realty', 'agent@maplekey.test', '+1-416-555-0142', 'verified', true);
-const seller2 = user('member', 'Jordan Ellis', 'jordan@homeseller.test', '+1-604-555-0176');
-const buyer1 = user('member', 'Olivia Martin', 'olivia@buyer.test', '+1-613-555-0108');
-user('member', 'Unverified Noah Chen', 'noah@buyer.test', '+1-780-555-0164', 'unverified');
+const seller1 = await user('member', 'Maple Key Realty', 'agent@maplekey.test', '+1-416-555-0142', 'verified', true);
+const seller2 = await user('member', 'Jordan Ellis', 'jordan@homeseller.test', '+1-604-555-0176');
+const buyer1 = await user('member', 'Olivia Martin', 'olivia@buyer.test', '+1-613-555-0108');
+await user('member', 'Unverified Noah Chen', 'noah@buyer.test', '+1-780-555-0164', 'unverified');
 const insertProp = db.prepare(`
   INSERT INTO properties
     (seller_id, title, description, property_type, listing_type, price, area_sqft,
@@ -33,7 +34,7 @@ const insertProp = db.prepare(`
 `);
 const insertImg = db.prepare('INSERT INTO property_images (property_id, url) VALUES (?, ?)');
 // Clear demo properties to keep seed idempotent-ish
-db.prepare("DELETE FROM properties WHERE title LIKE '[DEMO]%'").run();
+await db.prepare("DELETE FROM properties WHERE title LIKE '[DEMO]%'").run();
 const demo = [
   {
     seller_id: seller1.id, title: '[DEMO] Detached Home Near Lake Ontario',
@@ -102,21 +103,21 @@ const demo = [
 ];
 for (const d of demo) {
   const { img, ...row } = d;
-  const info = insertProp.run(row);
-  insertImg.run(info.lastInsertRowid, img);
+  const info = await insertProp.run(row);
+  await insertImg.run(info.lastInsertRowid, img);
 }
 // A sample interest + appointment from Anita
-const firstApproved = db.prepare("SELECT id, seller_id FROM properties WHERE status='approved' LIMIT 1").get();
-db.prepare(
+const firstApproved = await db.prepare("SELECT id, seller_id FROM properties WHERE status='approved' LIMIT 1").get();
+await db.prepare(
   'INSERT OR IGNORE INTO interests (property_id, buyer_id, message) VALUES (?, ?, ?)'
 ).run(firstApproved.id, buyer1.id, 'Is the price negotiable? Interested in a site visit.');
-db.prepare(
+await db.prepare(
   `INSERT INTO appointments (property_id, buyer_id, seller_id, scheduled_at, notes, status)
    VALUES (?, ?, ?, ?, ?, 'requested')`
 ).run(firstApproved.id, buyer1.id, firstApproved.seller_id,
   new Date(Date.now() + 3 * 864e5).toISOString(), 'Weekend visit preferred');
 console.log('[seed] done.');
-console.log('  admin : admin@propflow.test / Admin@12345');
+console.log(`  admin : ${config.admin.email} / ADMIN_PASSWORD from backend/.env`);
 console.log('  seller: agent@maplekey.test / Password@123');
 console.log('  buyer : olivia@buyer.test / Password@123');
-process.exit(0);
+await closeDatabase();

@@ -10,10 +10,10 @@ const insertAppt = db.prepare(
    VALUES (?, ?, ?, ?, ?)`
 );
 // POST /api/appointments — buyer requests a property viewing
-router.post('/', authenticate, requireRole('member'), (req, res) => {
+router.post('/', authenticate, requireRole('member'), async (req, res) => {
   const { property_id, scheduled_at, notes } = req.body;
   required(req.body, ['property_id', 'scheduled_at']);
-  const prop = getProperty.get(property_id);
+  const prop = await getProperty.get(property_id);
   if (!prop || prop.status !== 'approved')
     throw new HttpError(404, 'Property not available');
   if (prop.seller_id === req.user.id)
@@ -22,14 +22,14 @@ router.post('/', authenticate, requireRole('member'), (req, res) => {
   if (Number.isNaN(when.getTime())) throw new HttpError(400, 'Invalid date/time');
   if (when.getTime() < Date.now())
     throw new HttpError(400, 'Appointment must be in the future');
-  const info = insertAppt.run(
+  const info = await insertAppt.run(
     property_id,
     req.user.id,
     prop.seller_id,
     when.toISOString(),
     notes || null
   );
-  audit({
+  await audit({
     actorId: req.user.id,
     action: 'appointment.request',
     entity: 'property',
@@ -37,11 +37,11 @@ router.post('/', authenticate, requireRole('member'), (req, res) => {
     ip: req.ip,
   });
   res.status(201).json({
-    data: db.prepare('SELECT * FROM appointments WHERE id = ?').get(info.lastInsertRowid),
+    data: await db.prepare('SELECT * FROM appointments WHERE id = ?').get(info.lastInsertRowid),
   });
 });
 // GET /api/appointments/mine — role-aware list for dashboards
-router.get('/mine', authenticate, (req, res) => {
+router.get('/mine', authenticate, async (req, res) => {
   const view = req.query.view;
   if (view) oneOf(view, ['buyer', 'seller'], 'view');
   const participantFilter = view === 'buyer'
@@ -62,24 +62,24 @@ router.get('/mine', authenticate, (req, res) => {
      ORDER BY a.scheduled_at DESC`
   );
   const rows = participantFilter === 'WHERE (a.buyer_id = ? OR a.seller_id = ?)'
-    ? query.all(req.user.id, req.user.id)
+    ? await query.all(req.user.id, req.user.id)
     : participantFilter
-      ? query.all(req.user.id)
-      : query.all();
+      ? await query.all(req.user.id)
+      : await query.all();
   res.json({ data: rows });
 });
 // PATCH /api/appointments/:id/status
-router.patch('/:id/status', authenticate, (req, res) => {
+router.patch('/:id/status', authenticate, async (req, res) => {
   const { status } = req.body;
   oneOf(status, ['requested', 'confirmed', 'completed', 'cancelled'], 'status');
-  const appt = db.prepare('SELECT * FROM appointments WHERE id = ?').get(req.params.id);
+  const appt = await db.prepare('SELECT * FROM appointments WHERE id = ?').get(req.params.id);
   if (!appt) throw new HttpError(404, 'Appointment not found');
   const isParticipant =
     appt.buyer_id === req.user.id || appt.seller_id === req.user.id;
   if (!isParticipant && req.user.role !== 'admin')
     throw new HttpError(403, 'Not allowed');
-  db.prepare('UPDATE appointments SET status = ? WHERE id = ?').run(status, appt.id);
-  audit({
+  await db.prepare('UPDATE appointments SET status = ? WHERE id = ?').run(status, appt.id);
+  await audit({
     actorId: req.user.id,
     action: 'appointment.status',
     entity: 'appointment',
@@ -87,6 +87,6 @@ router.patch('/:id/status', authenticate, (req, res) => {
     meta: { status },
     ip: req.ip,
   });
-  res.json({ data: db.prepare('SELECT * FROM appointments WHERE id = ?').get(appt.id) });
+  res.json({ data: await db.prepare('SELECT * FROM appointments WHERE id = ?').get(appt.id) });
 });
 export default router;

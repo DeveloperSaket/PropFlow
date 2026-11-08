@@ -4,19 +4,26 @@
   "description": "Property buyer/seller platform backend with compliance",
   "type": "module",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=22.15.0"
+  },
   "scripts": {
-    "start": "node --experimental-sqlite src/server.js",
-    "dev": "node --experimental-sqlite --watch src/server.js",
-    "seed": "node --experimental-sqlite src/seed.js"
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seed.js",
+    "migrate:sqlite": "node --experimental-sqlite src/migrate-sqlite.js",
+    "backup:sqlite": "node --experimental-sqlite src/backup-sqlite.js",
+    "migrate": "node src/migrate.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.3.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-async-errors": "^3.1.1",
     "firebase-admin": "^13.0.2",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.13.1"
   }
 }

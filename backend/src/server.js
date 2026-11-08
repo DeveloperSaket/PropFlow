@@ -1,11 +1,15 @@
+import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import { config } from './config.js';
-import { initSchema } from './db.js';
+import { initSchema, pool } from './db.js';
 import { ensureAdmin } from './bootstrap.js';
 import { notFound, errorHandler } from './middleware/error.js';
-initSchema();
-ensureAdmin();
+if (process.env.NODE_ENV === 'production' && !config.jwtSecret) {
+  throw new Error('JWT_SECRET must be configured in production');
+}
+await initSchema();
+await ensureAdmin();
 const [
   { default: authRoutes },
   { default: propertyRoutes },
@@ -28,7 +32,10 @@ app.set('trust proxy', true);
 app.use(cors({ origin: config.corsOrigin === '*' ? true : config.corsOrigin.split(',') }));
 app.use(express.json({ limit: '1mb' }));
 app.use('/uploads/properties', express.static(config.propertyUploadDir));
-app.get('/api/health', (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
+app.get('/api/health', async (_req, res) => {
+  await pool.query('SELECT 1');
+  res.json({ ok: true, database: 'connected', ts: new Date().toISOString() });
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/interests', interestRoutes);

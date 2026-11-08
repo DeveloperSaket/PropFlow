@@ -4,40 +4,41 @@ import { HttpError } from '../utils/validate.js';
 import { getStaffAccess } from '../utils/staff.js';
 const getUser = db.prepare('SELECT * FROM users WHERE id = ?');
 /** Require a valid JWT. Attaches req.user (fresh from DB). */
-export function authenticate(req, _res, next) {
+export async function authenticate(req, _res, next) {
+  let payload;
   try {
     const header = req.headers.authorization || '';
     const token = header.startsWith('Bearer ') ? header.slice(7) : null;
     if (!token) throw new HttpError(401, 'Authentication required');
-    const payload = verifyToken(token);
-    const user = getUser.get(payload.id);
-    if (!user) throw new HttpError(401, 'User no longer exists');
-    if (!user.active) throw new HttpError(403, 'Account is deactivated');
-    if (Number(payload.tv || 0) !== Number(user.token_version || 0)) {
-      throw new HttpError(401, 'Session expired; please log in again');
-    }
-    const { password_hash, token_version, ...safe } = user;
-    req.user = { ...safe, ...getStaffAccess(user.id) };
-    next();
+    payload = verifyToken(token);
   } catch (err) {
-    if (err instanceof HttpError) return next(err);
-    next(new HttpError(401, 'Invalid or expired token'));
+    return next(err instanceof HttpError ? err : new HttpError(401, 'Invalid or expired token'));
   }
+  const user = await getUser.get(payload.id);
+  if (!user) return next(new HttpError(401, 'User no longer exists'));
+  if (!user.active) return next(new HttpError(403, 'Account is deactivated'));
+  if (Number(payload.tv || 0) !== Number(user.token_version || 0)) {
+    return next(new HttpError(401, 'Session expired; please log in again'));
+  }
+  const { password_hash, token_version, ...safe } = user;
+  req.user = { ...safe, ...await getStaffAccess(user.id) };
+  next();
 }
 /** Optional auth: attaches req.user if a valid token is present, else continues. */
-export function optionalAuth(req, _res, next) {
+export async function optionalAuth(req, _res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return next();
+  let payload;
   try {
-    const payload = verifyToken(token);
-    const user = getUser.get(payload.id);
-    if (user && user.active && Number(payload.tv || 0) === Number(user.token_version || 0)) {
-      const { password_hash, token_version, ...safe } = user;
-      req.user = { ...safe, ...getStaffAccess(user.id) };
-    }
+    payload = verifyToken(token);
   } catch {
-    /* ignore invalid token for optional auth */
+    return next();
+  }
+  const user = await getUser.get(payload.id);
+  if (user && user.active && Number(payload.tv || 0) === Number(user.token_version || 0)) {
+    const { password_hash, token_version, ...safe } = user;
+    req.user = { ...safe, ...await getStaffAccess(user.id) };
   }
   next();
 }

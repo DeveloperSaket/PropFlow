@@ -1,15 +1,14 @@
 import { db } from '../db.js';
-const stmt = db.prepare(
-  `INSERT INTO audit_logs (actor_id, action, entity, entity_id, meta, ip)
-   VALUES (?, ?, ?, ?, ?, ?)`
-);
 /**
  * Record a compliance / activity audit entry.
  * Never throws - auditing should not break the main flow.
  */
-export function audit({ actorId = null, action, entity = null, entityId = null, meta = null, ip = null }) {
+export async function audit({ actorId = null, action, entity = null, entityId = null, meta = null, ip = null }) {
   try {
-    stmt.run(
+    await db.prepare(
+      `INSERT INTO audit_logs (actor_id, action, entity, entity_id, meta, ip)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(
       actorId,
       action,
       entity,

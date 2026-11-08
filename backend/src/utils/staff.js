@@ -1,8 +1,8 @@
 import { db } from '../db.js';
 import { publicUser } from './auth.js';
 
-export function getStaffAccess(userId) {
-  const rows = db.prepare(`
+export async function getStaffAccess(userId) {
+  const rows = await db.prepare(`
     SELECT r.role_key, p.permission_key
     FROM user_roles ur
     JOIN roles r ON r.id = ur.role_id
@@ -14,20 +14,20 @@ export function getStaffAccess(userId) {
   return {
     staff_roles: [...new Set(rows.map((row) => row.role_key))],
     permissions: [...new Set(rows.map((row) => row.permission_key).filter(Boolean))],
-    staff_profile: db.prepare('SELECT * FROM staff_profiles WHERE user_id = ?').get(userId) || null,
+    staff_profile: await db.prepare('SELECT * FROM staff_profiles WHERE user_id = ?').get(userId) || null,
   };
 }
 
-export function userWithStaffAccess(user) {
+export async function userWithStaffAccess(user) {
   if (!user) return null;
-  return publicUser({ ...user, ...getStaffAccess(user.id) });
+  return publicUser({ ...user, ...await getStaffAccess(user.id) });
 }
 
-export function ensureStaffRole(userId, roleKey, grantedBy = null) {
-  const role = db.prepare('SELECT id FROM roles WHERE role_key = ?').get(roleKey);
+export async function ensureStaffRole(userId, roleKey, grantedBy = null) {
+  const role = await db.prepare('SELECT id FROM roles WHERE role_key = ?').get(roleKey);
   if (!role) throw new Error(`Unknown staff role: ${roleKey}`);
-  db.prepare('INSERT OR IGNORE INTO staff_profiles (user_id) VALUES (?)').run(userId);
-  db.prepare(`
+  await db.prepare('INSERT OR IGNORE INTO staff_profiles (user_id) VALUES (?)').run(userId);
+  await db.prepare(`
     INSERT OR IGNORE INTO user_roles (user_id, role_id, granted_by)
     VALUES (?, ?, ?)
   `).run(userId, role.id, grantedBy);
