@@ -4,7 +4,7 @@ export default function AccountTerms() {
   return (
     <main className="container account-terms">
       <header className="account-terms-header">
-        <p className="eyebrow">PropFlow · Compliance</p>
+        <p className="eyebrow">NegoBrick · Compliance</p>
         <h1 className="page-title">Account Terms and Conditions</h1>
         <p className="subtle">Last updated: November 1, 2026</p>
       </header>
@@ -15,7 +15,7 @@ export default function AccountTerms() {
         </p>
 
         <p>
-          These Account Terms and Conditions (the “Terms”) apply to your access to and use of PropFlow (the “Platform”). By creating an account or using the Platform, you agree to these Terms. If you do not agree, do not create an account or use the Platform.
+          These Account Terms and Conditions (the “Terms”) apply to your access to and use of NegoBrick (the “Platform”). By creating an account or using the Platform, you agree to these Terms. If you do not agree, do not create an account or use the Platform.
         </p>
 
         <section>
@@ -28,7 +28,7 @@ export default function AccountTerms() {
         <section>
           <h2>2. Using the Platform</h2>
           <p>
-            The Platform provides tools to discover and publish property listings, express interest, request viewings, and communicate with other users. Unless we expressly state otherwise, PropFlow is a technology marketplace and is not a party to transactions between users, does not act as your real estate representative, and does not provide legal, financial, tax, or investment advice.
+            The Platform provides tools to discover and publish property listings, express interest, request viewings, and communicate with other users. Unless we expressly state otherwise, NegoBrick is a technology marketplace and is not a party to transactions between users, does not act as your real estate representative, and does not provide legal, financial, tax, or investment advice.
           </p>
           <p>
             You are responsible for independently verifying property information, availability, pricing, and the identity and authority of other users. A listing or other Platform content is not a guarantee, offer, or professional recommendation.
@@ -41,7 +41,7 @@ export default function AccountTerms() {
             You may submit content only when you have the rights and authority to do so. Information you provide must be accurate, lawful, and not misleading. You must not impersonate another person, post fraudulent or unauthorized listings, harass others, misuse personal information, interfere with the Platform, or use it for an unlawful purpose.
           </p>
           <p>
-            You remain responsible for your content and interactions. You grant PropFlow permission to host, display, and use content you submit as reasonably needed to operate and improve the Platform and provide its features.
+            You remain responsible for your content and interactions. You grant NegoBrick permission to host, display, and use content you submit as reasonably needed to operate and improve the Platform and provide its features.
           </p>
         </section>
 
@@ -68,7 +68,7 @@ export default function AccountTerms() {
             We work to keep the Platform available and reliable, but do not guarantee uninterrupted or error-free access. To the extent permitted by applicable law, the Platform is provided without warranties beyond those that cannot legally be excluded. Nothing in these Terms limits any rights or remedies that cannot be limited under applicable consumer protection or other laws.
           </p>
           <p>
-            To the extent permitted by applicable law, PropFlow is not responsible for indirect or consequential loss arising from your use of the Platform or dealings with other users. This does not exclude liability that cannot legally be excluded or limited.
+            To the extent permitted by applicable law, NegoBrick is not responsible for indirect or consequential loss arising from your use of the Platform or dealings with other users. This does not exclude liability that cannot legally be excluded or limited.
           </p>
         </section>
 

@@ -1,7 +1,7 @@
 {
-  "name": "propflow-backend",
+  "name": "negobrick-backend",
   "version": "1.0.0",
-  "description": "Property buyer/seller platform backend with compliance",
+  "description": "NegoBrick property buyer/seller platform backend with compliance",
   "type": "module",
   "main": "src/server.js",
   "scripts": {

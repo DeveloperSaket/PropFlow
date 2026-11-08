@@ -1,4 +1,4 @@
-# PropFlow — Compliant Property Marketplace
+# NegoBrick — Compliant Property Marketplace
 A full-stack platform connecting **property sellers** and **buyers**, with a
 **platform-owner (admin)** back office and built-in **compliance** (KYC
 verification, listing approval, and an immutable audit trail).

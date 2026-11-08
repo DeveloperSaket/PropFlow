@@ -1,9 +1,9 @@
 {
-  "name": "propflow",
+  "name": "negobrick",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "PropFlow — compliant property buyer/seller marketplace (React + Node/Express)",
+  "description": "NegoBrick — compliant property buyer/seller marketplace (React + Node/Express)",
   "scripts": {
     "install:all": "cd backend && npm install && cd ../frontend && npm install",
     "seed": "cd backend && npm run seed",

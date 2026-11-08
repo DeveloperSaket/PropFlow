@@ -23,7 +23,7 @@ export default function Login() {
   return (
     <div className="container max-width-440">
       <h1 className="page-title">Log in</h1>
-      <p className="subtle">Welcome back to PropFlow.</p>
+      <p className="subtle">Welcome back to NegoBrick.</p>
       <Form className="card" onSubmit={submit}>
         <Alert type="error">{err}</Alert>
         <Input label="Email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />

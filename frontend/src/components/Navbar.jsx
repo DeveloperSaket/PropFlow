@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { db } from '../firebase/index.js';
 import { getUnreadChatCount, listenToBuyerChatRooms, listenToSellerChatRooms } from '../firebase/chat.js';
+import negobrickLogo from '../../Assets/negobrick.svg';
 import './Navbar.scss';
 
 export default function Navbar() {
@@ -71,7 +72,9 @@ export default function Navbar() {
 
   return (
     <nav className="nav" ref={navRef}>
-      <Link to="/" className="brand">Prop<span>Flow</span></Link>
+      <Link to="/" className="brand" aria-label="NegoBrick home">
+        <img src={negobrickLogo} alt="NegoBrick" />
+      </Link>
       <button
         className="nav-menu-toggle"
         type="button"
