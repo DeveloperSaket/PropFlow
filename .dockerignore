@@ -1,0 +1,14 @@
+.git
+.env
+.env.dev
+**/.env
+backend/.env
+frontend/.env.local
+**/node_modules
+backend/data
+backend/uploads
+frontend/dist
+*.service-account.json
+/deploy.sh
+/deploy-dev.sh
+/initial-setup.sh

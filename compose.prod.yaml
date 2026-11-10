@@ -1,0 +1,7 @@
+services:
+  frontend:
+    networks:
+      default: {}
+      propflow-proxy:
+        aliases:
+          - propflow-production

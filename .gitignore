@@ -4,4 +4,7 @@ backend/uploads/
 frontend/.env.local
 *.service-account.json
 frontend/dist
-
+.env
+.env.dev
+.env.staging
+.env.ppe

@@ -3,16 +3,16 @@
 ## Purpose and status
 
 This document describes PropFlow's staff-capable data model and its planned
-database direction. The current backend still uses SQLite. It now creates
+database direction. The current backend still uses SQLite, but it now creates
 `staff_profiles`, `roles`, `permissions`, `role_permissions`, `user_roles`,
 and `staff_role_requests` tables, and staff API routes enforce assigned
 permissions. Existing admin accounts are assigned the Owner role at startup.
 
-PostgreSQL support has **not** been implemented. The PostgreSQL schema below
-is a design reference for a future migration; do not apply it directly to the
-live SQLite database. Email ownership verification and staff invitations are
-also not implemented. PostgreSQL migration planning is covered separately in
-[MIGRATING-TO-POSTGRES.md](./MIGRATING-TO-POSTGRES.md).
+This is an architecture proposal and a migration reference, not a statement
+that PostgreSQL or all staff-management workflows are fully implemented. The
+current implementation still runs on SQLite, and email ownership verification
+and staff invitations remain incomplete. PostgreSQL migration planning is
+covered separately in [MIGRATING-TO-POSTGRES.md](./MIGRATING-TO-POSTGRES.md).
 
 ## Goals
 
@@ -160,10 +160,10 @@ note. Users may request predefined roles other than Owner from the
 per user and role. Approval creates the staff profile if needed and assigns
 the role in the same transaction that marks the request approved.
 
-The current domain check only compares the email string; it does not prove
-the user controls that mailbox. Role grants remain owner-approved, but
-company email verification or SSO is needed before treating domain
-eligibility as an identity guarantee.
+The domain check only compares the email string; it does not prove the user
+controls that mailbox. Role grants remain owner-approved, but company email
+verification or SSO is needed before treating domain eligibility as an
+identity guarantee.
 
 ### Existing application data
 
