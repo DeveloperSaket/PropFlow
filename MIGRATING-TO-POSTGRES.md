@@ -46,6 +46,12 @@ The current schema has these tables:
 | `appointments` | Requested property viewings |
 | `compliance_docs` | KYC document metadata and local file paths |
 | `audit_logs` | Audit events and metadata |
+| `staff_profiles` | Optional staff-only profile fields tied to `users.id` |
+| `roles` | Predefined staff role catalog |
+| `permissions` | Staff API capability catalog |
+| `role_permissions` | Role-to-permission assignments |
+| `user_roles` | Staff users' assigned roles |
+| `staff_role_requests` | User-submitted role requests and owner decisions |
 
 Foreign keys, unique constraints, check constraints and indexes are defined in
 `backend/src/db.js`. That file also performs in-place SQLite schema upgrades
@@ -162,8 +168,11 @@ database connection limit and the number of application instances.
 
 Create ordered, repeatable migration files (for example, with a migration
 tool compatible with `pg`, or a small project-owned migration runner). The
-initial migration should create all seven tables, constraints and indexes
-listed above. Later schema changes should be new migrations, not edits to an
+initial migration should create all application and staff tables, constraints
+and indexes listed above. Seed the stable roles and permissions through a
+repeatable migration/seed step, preserve existing user IDs, and map existing
+admin accounts to the Owner role only after reviewing the intended production
+access. Later schema changes should be new migrations, not edits to an
 already-applied migration.
 
 Review the current SQLite schema and the existing schema-upgrade code for
